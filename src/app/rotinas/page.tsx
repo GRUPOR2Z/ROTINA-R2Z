@@ -50,6 +50,18 @@ export default async function RotinasPage({
   const rotinaPorTarefa = new Map((ocorrencias ?? []).map((o) => [o.task_id, o.recurring_routine_id]));
   const tarefas = filtrarProximasPendentes(todasTarefas ?? [], rotinaPorTarefa);
 
+  // conta TODAS as ocorrencias de cada rotina, nao so as que passaram
+  // pelo filtro de status/area/responsavel acima.
+  const idsRotinas = [...new Set((ocorrencias ?? []).map((o) => o.recurring_routine_id))];
+  const { data: todasOcorrenciasDasRotinas } = idsRotinas.length
+    ? await supabase.from("task_occurrences").select("recurring_routine_id").in("recurring_routine_id", idsRotinas)
+    : { data: [] as { recurring_routine_id: string }[] };
+
+  const contagemPorRotina = new Map<string, number>();
+  for (const o of todasOcorrenciasDasRotinas ?? []) {
+    contagemPorRotina.set(o.recurring_routine_id, (contagemPorRotina.get(o.recurring_routine_id) ?? 0) + 1);
+  }
+
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
@@ -96,17 +108,23 @@ export default async function RotinasPage({
                     t.profiles as unknown as { nome: string | null; email: string | null } | null
                   );
                   const atrasada = estaAtrasada(t.prazo, t.status);
+                  const rotinaId = rotinaPorTarefa.get(t.id);
 
                   return (
                     <TableRow key={t.id}>
                       <TableCell>
                         <Link href={`/rotinas/${t.id}`} className="font-medium hover:underline">
-                          {rotinaPorTarefa.has(t.id) && (
+                          {rotinaId && (
                             <span className="mr-1 text-muted-foreground" title="Tarefa recorrente">
                               ↻
                             </span>
                           )}
                           {t.titulo}
+                          {rotinaId && (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              ({contagemPorRotina.get(rotinaId)})
+                            </span>
+                          )}
                         </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{area || "—"}</TableCell>
