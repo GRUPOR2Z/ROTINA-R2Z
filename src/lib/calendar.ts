@@ -33,6 +33,26 @@ export function proximaData(prazo: string, frequencia: Frequencia) {
   return dateKey(d);
 }
 
+/** Quantas ocorrências futuras ficam visíveis de uma vez, tipo uma
+ * agenda de verdade — não só "a próxima depois que eu concluir". */
+export const HORIZONTE_RECORRENCIA: Record<Frequencia, number> = {
+  diaria: 14,
+  semanal: 8,
+  mensal: 6,
+};
+
+/** `quantidade` datas seguintes a partir de `dataInicial` (exclusiva),
+ * avançando pela frequência a cada uma. */
+export function gerarProximasDatas(dataInicial: string, frequencia: Frequencia, quantidade: number) {
+  const datas: string[] = [];
+  let atual = dataInicial;
+  for (let i = 0; i < quantidade; i++) {
+    atual = proximaData(atual, frequencia);
+    datas.push(atual);
+  }
+  return datas;
+}
+
 export function mesAnterior(year: number, month: number) {
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }

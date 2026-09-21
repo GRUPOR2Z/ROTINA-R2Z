@@ -3,7 +3,43 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { proximaData, type Frequencia } from "@/lib/calendar";
+import {
+  proximaData,
+  gerarProximasDatas,
+  HORIZONTE_RECORRENCIA,
+  type Frequencia,
+} from "@/lib/calendar";
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+type DadosTarefaBase = {
+  titulo: string;
+  descricao: string | null;
+  area_id: string | null;
+  responsavel_id: string | null;
+  prioridade: string;
+  horario: string | null;
+  criado_por: string;
+};
+
+async function criarOcorrencia(
+  supabase: SupabaseServerClient,
+  routineId: string,
+  prazo: string,
+  base: DadosTarefaBase,
+) {
+  const { data: novaTarefa } = await supabase
+    .from("tasks")
+    .insert({ ...base, prazo })
+    .select("id")
+    .single();
+
+  if (novaTarefa) {
+    await supabase
+      .from("task_occurrences")
+      .insert({ recurring_routine_id: routineId, task_id: novaTarefa.id, data_prevista: prazo });
+  }
+}
 
 export async function criarTarefa(formData: FormData) {
   const supabase = await createClient();
@@ -51,6 +87,26 @@ export async function criarTarefa(formData: FormData) {
       await supabase
         .from("task_occurrences")
         .insert({ recurring_routine_id: rotina.id, task_id: data.id, data_prevista: prazo });
+
+      // pre-gera as proximas ocorrencias, tipo uma agenda de verdade --
+      // nao so "a proxima depois que eu concluir esta".
+      const base: DadosTarefaBase = {
+        titulo,
+        descricao,
+        area_id: areaId,
+        responsavel_id: responsavelId,
+        prioridade,
+        horario,
+        criado_por: user.id,
+      };
+      const proximasDatas = gerarProximasDatas(
+        prazo,
+        frequencia,
+        HORIZONTE_RECORRENCIA[frequencia] - 1,
+      );
+      for (const dataFutura of proximasDatas) {
+        await criarOcorrencia(supabase, rotina.id, dataFutura, base);
+      }
     }
   }
 
@@ -128,33 +184,32 @@ export async function atualizarStatus(
       : null;
 
     if (ocorrencia && rotina?.ativa) {
-      const proximoPrazo = proximaData(tarefaAtual.prazo, rotina.frequencia as Frequencia);
+      // mantem a janela de ocorrencias futuras: gera mais uma depois
+      // da mais distante ja existente, nao depois desta tarefa.
+      const { data: maisDistante } = await supabase
+        .from("task_occurrences")
+        .select("data_prevista")
+        .eq("recurring_routine_id", ocorrencia.recurring_routine_id)
+        .order("data_prevista", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const baseData = maisDistante?.data_prevista ?? tarefaAtual.prazo;
+      const proximoPrazo = proximaData(baseData, rotina.frequencia as Frequencia);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const { data: novaTarefa } = await supabase
-        .from("tasks")
-        .insert({
-          titulo: tarefaAtual.titulo,
-          descricao: tarefaAtual.descricao,
-          area_id: tarefaAtual.area_id,
-          responsavel_id: tarefaAtual.responsavel_id,
-          prioridade: tarefaAtual.prioridade,
-          prazo: proximoPrazo,
-          horario: tarefaAtual.horario,
-          criado_por: user?.id ?? tarefaAtual.criado_por,
-        })
-        .select("id")
-        .single();
-
-      if (novaTarefa) {
-        await supabase.from("task_occurrences").insert({
-          recurring_routine_id: ocorrencia.recurring_routine_id,
-          task_id: novaTarefa.id,
-          data_prevista: proximoPrazo,
-        });
-      }
+      await criarOcorrencia(supabase, ocorrencia.recurring_routine_id, proximoPrazo, {
+        titulo: tarefaAtual.titulo,
+        descricao: tarefaAtual.descricao,
+        area_id: tarefaAtual.area_id,
+        responsavel_id: tarefaAtual.responsavel_id,
+        prioridade: tarefaAtual.prioridade,
+        horario: tarefaAtual.horario,
+        criado_por: user?.id ?? tarefaAtual.criado_por,
+      });
     }
   }
 
