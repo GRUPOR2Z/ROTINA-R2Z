@@ -78,6 +78,14 @@ a navegação não ter links quebrados; sem lógica ainda.
 
 ## 5. Pendências e limitações conhecidas
 
+- **BUG CORRIGIDO (2026-09-20):** o `middleware.ts` estava na raiz do
+  projeto, mas com `--src-dir` o Next.js só reconhece middleware em
+  `src/middleware.ts` — o arquivo original nunca rodava, então
+  nenhuma rota estava protegida de fato (qualquer um acessava
+  `/rotinas`, `/equipe`, etc. sem login). Corrigido movendo o arquivo
+  para o lugar certo; adicionei `e2e/auth-guard.spec.ts` pra isso não
+  voltar a passar despercebido. Se você chegou a ver o app "logado"
+  sem ter criado conta, era esse bug — já está resolvido.
 - **A migration `supabase/migrations/0001_init.sql` ainda não foi
   aplicada no seu projeto Supabase.** Eu não tenho a senha do banco
   nem a `service_role` key nesta sessão (por design — combinamos não
@@ -103,8 +111,14 @@ a navegação não ter links quebrados; sem lógica ainda.
   escrita e revisada, não validada contra o banco (que ainda não
   existe). Isso é o primeiro teste a rodar assim que a migration for
   aplicada.
-- Item 02 do backlog (cadastro de áreas/membros pela interface) não foi
-  implementado — hoje isso só é possível direto no Supabase.
+- Item 02 do backlog (cadastro de áreas/membros pela interface) ganhou
+  a galeria de perfis em `/equipe` e `/equipe/[id]` (competências +
+  registro manual de resultados/falhas). Falta ainda o cadastro de
+  novas áreas pela interface (hoje só existe as 3 semeadas na
+  migration) — isso fica pra próxima parte.
+- A migration `0002_equipe.sql` (tabelas `member_tags` e
+  `member_notes`) também precisa ser aplicada no SQL Editor, junto com
+  a `0001_init.sql`.
 
 ## 6. Testes executados
 
@@ -114,6 +128,8 @@ a navegação não ter links quebrados; sem lógica ainda.
 | `npm run lint` | ESLint | ✅ Sem erros |
 | `EmptyState` renderiza título e descrição | Vitest + Testing Library | ✅ Passou |
 | Login com credenciais inválidas exibe mensagem de erro | Playwright (e2e, Chromium) | ✅ Passou |
+| Rota protegida redireciona para `/login` sem sessão | Playwright (e2e, Chromium) | ✅ Passou (pegou o bug do middleware) |
+| `/login` continua acessível sem sessão | Playwright (e2e, Chromium) | ✅ Passou |
 
 **Não testado ainda** (depende da migration aplicada e de usuários
 reais existirem): login com credenciais válidas, RLS bloqueando um
