@@ -42,7 +42,14 @@ export default async function RotinasPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Rotinas</h1>
-            <p className="text-sm text-muted-foreground">Tarefas e prazos da operação.</p>
+            <div className="mt-1 flex gap-4 text-sm">
+              <Link href="/rotinas" className="font-medium text-foreground">
+                Lista
+              </Link>
+              <Link href="/rotinas/calendario" className="text-muted-foreground hover:text-foreground">
+                Calendário
+              </Link>
+            </div>
           </div>
           <Link href="/rotinas/nova" className={buttonVariants()}>
             Nova tarefa
