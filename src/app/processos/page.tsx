@@ -76,8 +76,10 @@ export default async function ProcessosPage({
                     aria-label={p.titulo}
                   />
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-medium">{p.titulo}</h3>
-                    <div className="relative z-10 flex items-center gap-1">
+                    <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={p.titulo}>
+                      {p.titulo}
+                    </h3>
+                    <div className="relative z-10 flex shrink-0 items-center gap-1">
                       <ProcessStatusBadge status={p.status} />
                       <ProcessCardMenu processId={p.id} googleDocUrl={p.google_doc_url} />
                     </div>
