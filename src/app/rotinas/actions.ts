@@ -18,6 +18,7 @@ export async function criarTarefa(formData: FormData) {
   const responsavelId = String(formData.get("responsavel_id") ?? "") || user.id;
   const prioridade = String(formData.get("prioridade") ?? "media");
   const prazo = String(formData.get("prazo") ?? "") || null;
+  const horario = String(formData.get("horario") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
 
   const { data, error } = await supabase
@@ -29,6 +30,7 @@ export async function criarTarefa(formData: FormData) {
       responsavel_id: responsavelId,
       prioridade,
       prazo,
+      horario,
       criado_por: user.id,
     })
     .select("id")
@@ -50,6 +52,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
   const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
   const prioridade = String(formData.get("prioridade") ?? "media");
   const prazo = String(formData.get("prazo") ?? "") || null;
+  const horario = String(formData.get("horario") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
 
   await supabase
@@ -61,6 +64,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
       responsavel_id: responsavelId,
       prioridade,
       prazo,
+      horario,
     })
     .eq("id", taskId);
 

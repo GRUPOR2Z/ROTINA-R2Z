@@ -144,6 +144,16 @@ export default async function TarefaPage({
                 <Label htmlFor="prazo">Prazo</Label>
                 <Input id="prazo" name="prazo" type="date" defaultValue={tarefa.prazo ?? ""} />
               </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="horario">Horário (opcional)</Label>
+                <Input
+                  id="horario"
+                  name="horario"
+                  type="time"
+                  defaultValue={tarefa.horario ? tarefa.horario.slice(0, 5) : ""}
+                />
+              </div>
             </div>
 
             <Button type="submit" size="sm" className="self-start">

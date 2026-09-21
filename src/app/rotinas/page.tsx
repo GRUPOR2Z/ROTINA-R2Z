@@ -26,7 +26,9 @@ export default async function RotinasPage({
 
   let query = supabase
     .from("tasks")
-    .select("id, titulo, status, prioridade, prazo, areas(nome), profiles!tasks_responsavel_id_fkey(nome, email)")
+    .select(
+      "id, titulo, status, prioridade, prazo, horario, areas(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
+    )
     .order("prazo", { ascending: true, nullsFirst: false })
     .order("criado_em", { ascending: false });
 
@@ -98,6 +100,7 @@ export default async function RotinasPage({
                         {t.prazo
                           ? new Date(t.prazo).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
                           : "—"}
+                        {t.horario && ` · ${t.horario.slice(0, 5)}`}
                         {atrasada && " · atrasada"}
                       </TableCell>
                       <TableCell>

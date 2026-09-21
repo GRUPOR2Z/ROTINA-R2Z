@@ -37,9 +37,10 @@ export default async function CalendarioPage({
   const supabase = await createClient();
   const { data: tarefas } = await supabase
     .from("tasks")
-    .select("id, titulo, status, prazo")
+    .select("id, titulo, status, prazo, horario")
     .gte("prazo", inicio)
     .lte("prazo", fim)
+    .order("horario", { ascending: true, nullsFirst: false })
     .order("titulo");
 
   const porDia = new Map<string, NonNullable<typeof tarefas>>();
@@ -48,6 +49,15 @@ export default async function CalendarioPage({
     const lista = porDia.get(t.prazo) ?? [];
     lista.push(t);
     porDia.set(t.prazo, lista);
+  }
+  // com hora definida primeiro (ordenadas por horario), depois as de dia inteiro
+  for (const lista of porDia.values()) {
+    lista.sort((a, b) => {
+      if (a.horario && b.horario) return a.horario.localeCompare(b.horario);
+      if (a.horario) return -1;
+      if (b.horario) return 1;
+      return 0;
+    });
   }
 
   const anterior = mesAnterior(anoParam, mesParam);
@@ -140,7 +150,7 @@ export default async function CalendarioPage({
                         href={`/rotinas/${t.id}`}
                         className={`truncate rounded px-1 py-0.5 text-[11px] hover:underline ${corDaTarefa(t.status)}`}
                       >
-                        {t.titulo}
+                        {t.horario ? `${t.horario.slice(0, 5)} · ${t.titulo}` : t.titulo}
                       </Link>
                     ))}
                     {tarefasDoDia.length > 3 && (

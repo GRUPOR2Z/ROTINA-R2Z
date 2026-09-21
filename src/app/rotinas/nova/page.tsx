@@ -89,6 +89,11 @@ export default async function NovaTarefaPage() {
               <Label htmlFor="prazo">Prazo</Label>
               <Input id="prazo" name="prazo" type="date" />
             </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="horario">Horário (opcional)</Label>
+              <Input id="horario" name="horario" type="time" />
+            </div>
           </div>
 
           <Button type="submit" className="mt-2 self-start">
