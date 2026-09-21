@@ -36,6 +36,10 @@ const tabelas = [
   "process_versions",
   "kpis",
   "kpi_values",
+  "okr_cycles",
+  "objectives",
+  "key_results",
+  "key_result_updates",
 ];
 
 for (const tabela of tabelas) {

@@ -1,0 +1,87 @@
+import Link from "next/link";
+import { AppShell } from "@/components/layout/app-shell";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getAreasEMembros } from "@/lib/lookups";
+import { criarObjetivo } from "../../../actions";
+
+export default async function NovoObjetivoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { areas, membros } = await getAreasEMembros();
+
+  return (
+    <AppShell>
+      <div className="flex max-w-lg flex-col gap-6">
+        <div>
+          <Link href={`/okrs/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
+            ← Ciclo
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Novo objetivo</h1>
+        </div>
+
+        <form action={criarObjetivo.bind(null, id)} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="titulo">Título</Label>
+            <Input id="titulo" name="titulo" required autoFocus />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="descricao">Descrição</Label>
+            <Textarea id="descricao" name="descricao" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="area_id">Área</Label>
+              <Select name="area_id">
+                <SelectTrigger id="area_id" className="w-full">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {areas.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="responsavel_id">Responsável</Label>
+              <Select name="responsavel_id">
+                <SelectTrigger id="responsavel_id" className="w-full">
+                  <SelectValue placeholder="Selecionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {membros.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.nome || m.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <SubmitButton className="mt-2 self-start" pendingText="Criando…">
+            Criar objetivo
+          </SubmitButton>
+        </form>
+      </div>
+    </AppShell>
+  );
+}
