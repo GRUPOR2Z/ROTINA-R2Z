@@ -34,6 +34,8 @@ const tabelas = [
   "task_occurrences",
   "processes",
   "process_versions",
+  "kpis",
+  "kpi_values",
 ];
 
 for (const tabela of tabelas) {
