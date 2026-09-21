@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
+import { filtrarProximasPendentes } from "@/lib/rotinas";
 
 export default async function RotinasPage({
   searchParams,
@@ -36,7 +37,18 @@ export default async function RotinasPage({
   if (params.area) query = query.eq("area_id", params.area);
   if (params.responsavel) query = query.eq("responsavel_id", params.responsavel);
 
-  const { data: tarefas } = await query;
+  const { data: todasTarefas } = await query;
+
+  const idsCarregados = (todasTarefas ?? []).map((t) => t.id);
+  const { data: ocorrencias } = idsCarregados.length
+    ? await supabase
+        .from("task_occurrences")
+        .select("task_id, recurring_routine_id")
+        .in("task_id", idsCarregados)
+    : { data: [] as { task_id: string; recurring_routine_id: string }[] };
+
+  const rotinaPorTarefa = new Map((ocorrencias ?? []).map((o) => [o.task_id, o.recurring_routine_id]));
+  const tarefas = filtrarProximasPendentes(todasTarefas ?? [], rotinaPorTarefa);
 
   return (
     <AppShell>
@@ -89,6 +101,11 @@ export default async function RotinasPage({
                     <TableRow key={t.id}>
                       <TableCell>
                         <Link href={`/rotinas/${t.id}`} className="font-medium hover:underline">
+                          {rotinaPorTarefa.has(t.id) && (
+                            <span className="mr-1 text-muted-foreground" title="Tarefa recorrente">
+                              ↻
+                            </span>
+                          )}
                           {t.titulo}
                         </Link>
                       </TableCell>
