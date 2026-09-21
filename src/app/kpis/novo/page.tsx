@@ -29,19 +29,48 @@ export default async function NovoKpiPage() {
 
         <form action={criarKpi} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="nome">Nome</Label>
+            <Label htmlFor="nome">Título</Label>
             <Input id="nome" name="nome" required autoFocus />
           </div>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="descricao">Descrição</Label>
-            <Textarea id="descricao" name="descricao" />
+            <Textarea id="descricao" name="descricao" placeholder="O que esse número representa" />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="formula">Fórmula</Label>
-            <Textarea id="formula" name="formula" placeholder="Como esse número é calculado" />
+            <Label htmlFor="tipo_meta">Isso é medido em</Label>
+            <Select name="tipo_meta" defaultValue="unidade">
+              <SelectTrigger id="tipo_meta" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unidade">Unidade (vendas, R$, clientes...)</SelectItem>
+                <SelectItem value="percentual">Porcentagem (%)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="unidade">Nome da unidade (opcional)</Label>
+            <Input id="unidade" name="unidade" placeholder="Ex: vendas, R$, clientes" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="valor_inicial">De quanto</Label>
+              <Input id="valor_inicial" name="valor_inicial" type="number" step="any" placeholder="Ex: 2" />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="meta">Para quanto (meta)</Label>
+              <Input id="meta" name="meta" type="number" step="any" placeholder="Ex: 4" required />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            O farol (Ok/Atenção/Crítico) é calculado sozinho pela distância entre esses dois números e o
+            último valor registrado.
+          </p>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
@@ -74,59 +103,6 @@ export default async function NovoKpiPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="unidade">Unidade</Label>
-              <Input id="unidade" name="unidade" placeholder="%, R$, un." />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="fonte">Fonte</Label>
-              <Input id="fonte" name="fonte" placeholder="De onde vem o dado" />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="periodicidade">Periodicidade</Label>
-              <Select name="periodicidade" defaultValue="mensal">
-                <SelectTrigger id="periodicidade" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="diaria">Diária</SelectItem>
-                  <SelectItem value="semanal">Semanal</SelectItem>
-                  <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="trimestral">Trimestral</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="direcao">O que é bom</Label>
-              <Select name="direcao" defaultValue="maior_melhor">
-                <SelectTrigger id="direcao" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="maior_melhor">Valor maior é melhor</SelectItem>
-                  <SelectItem value="menor_melhor">Valor menor é melhor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="meta">Meta (opcional)</Label>
-              <Input id="meta" name="meta" type="number" step="any" />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="limiar_atencao">Limiar de atenção</Label>
-              <Input id="limiar_atencao" name="limiar_atencao" type="number" step="any" />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="limiar_critico">Limiar crítico</Label>
-              <Input id="limiar_critico" name="limiar_critico" type="number" step="any" />
             </div>
           </div>
 

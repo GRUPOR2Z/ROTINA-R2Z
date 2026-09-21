@@ -4,14 +4,14 @@ import { EmptyState } from "@/components/states/empty-state";
 import { FarolBadge } from "@/components/kpis/farol-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
-import { calcularFarol, type DirecaoKpi } from "@/lib/kpi-status";
+import { calcularFarolPorMeta } from "@/lib/kpi-status";
 
 export default async function KPIsPage() {
   const supabase = await createClient();
 
   const { data: kpis } = await supabase
     .from("kpis")
-    .select("id, nome, unidade, meta, direcao, limiar_atencao, limiar_critico, areas(nome)")
+    .select("id, nome, unidade, tipo_meta, valor_inicial, meta, areas(nome)")
     .eq("ativo", true)
     .order("nome");
 
@@ -52,12 +52,8 @@ export default async function KPIsPage() {
             {kpis.map((k) => {
               const area = (k.areas as unknown as { nome: string } | null)?.nome;
               const valorAtual = ultimoValorPorKpi.get(k.id) ?? null;
-              const farol = calcularFarol(
-                valorAtual,
-                k.limiar_atencao,
-                k.limiar_critico,
-                k.direcao as DirecaoKpi,
-              );
+              const farol = calcularFarolPorMeta(valorAtual, k.valor_inicial, k.meta);
+              const sufixo = k.tipo_meta === "percentual" ? "%" : k.unidade ? ` ${k.unidade}` : "";
 
               return (
                 <Link
@@ -73,8 +69,8 @@ export default async function KPIsPage() {
                   </div>
                   <p className="text-2xl font-semibold tabular-nums">
                     {valorAtual !== null ? valorAtual.toLocaleString("pt-BR") : "—"}
-                    {k.unidade && valorAtual !== null && (
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">{k.unidade}</span>
+                    {valorAtual !== null && (
+                      <span className="ml-1 text-sm font-normal text-muted-foreground">{sufixo}</span>
                     )}
                   </p>
                   <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
@@ -82,7 +78,7 @@ export default async function KPIsPage() {
                     {k.meta !== null && (
                       <span>
                         {area && "· "}Meta: {k.meta.toLocaleString("pt-BR")}
-                        {k.unidade}
+                        {sufixo}
                       </span>
                     )}
                   </div>

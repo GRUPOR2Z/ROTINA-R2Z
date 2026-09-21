@@ -1,24 +1,29 @@
-export type DirecaoKpi = "maior_melhor" | "menor_melhor";
 export type FarolKpi = "ok" | "atencao" | "critico" | "sem_dados";
 
-export function calcularFarol(
-  valor: number | null,
-  limiarAtencao: number | null,
-  limiarCritico: number | null,
-  direcao: DirecaoKpi,
+/**
+ * Farol calculado pela distância percorrida entre o valor inicial e a
+ * meta — não precisa que ninguém defina limiares nem direção "maior é
+ * melhor". Funciona igual pra metas de subir (2 → 4) ou de descer
+ * (10% → 2%), porque divide pela distância total (que já vem com o
+ * sinal certo).
+ */
+export function calcularFarolPorMeta(
+  valorAtual: number | null,
+  valorInicial: number | null,
+  meta: number | null,
 ): FarolKpi {
-  if (valor === null || (limiarAtencao === null && limiarCritico === null)) {
+  if (valorAtual === null || valorInicial === null || meta === null) {
     return "sem_dados";
   }
 
-  if (direcao === "maior_melhor") {
-    if (limiarCritico !== null && valor <= limiarCritico) return "critico";
-    if (limiarAtencao !== null && valor <= limiarAtencao) return "atencao";
-    return "ok";
+  const distanciaTotal = meta - valorInicial;
+  if (distanciaTotal === 0) {
+    return valorAtual === meta ? "ok" : "atencao";
   }
 
-  // menor_melhor: valor alto e' ruim
-  if (limiarCritico !== null && valor >= limiarCritico) return "critico";
-  if (limiarAtencao !== null && valor >= limiarAtencao) return "atencao";
-  return "ok";
+  const progresso = (valorAtual - valorInicial) / distanciaTotal;
+
+  if (progresso >= 1) return "ok";
+  if (progresso >= 0.5) return "atencao";
+  return "critico";
 }

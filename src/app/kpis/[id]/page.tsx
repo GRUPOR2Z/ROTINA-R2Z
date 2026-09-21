@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
-import { calcularFarol, type DirecaoKpi } from "@/lib/kpi-status";
+import { calcularFarolPorMeta } from "@/lib/kpi-status";
 import { atualizarKpi, registrarValor, excluirValor, excluirKpi } from "../actions";
 
 function formatarData(iso: string) {
@@ -54,7 +54,8 @@ export default async function KpiPage({
     .order("referencia_periodo", { ascending: false });
 
   const valorAtual = valores?.[0]?.valor ?? null;
-  const farol = calcularFarol(valorAtual, kpi.limiar_atencao, kpi.limiar_critico, kpi.direcao as DirecaoKpi);
+  const farol = calcularFarolPorMeta(valorAtual, kpi.valor_inicial, kpi.meta);
+  const sufixoUnidade = kpi.tipo_meta === "percentual" ? "%" : kpi.unidade ? ` ${kpi.unidade}` : "";
 
   return (
     <AppShell>
@@ -75,16 +76,26 @@ export default async function KpiPage({
             <p className="text-xs text-muted-foreground">Valor atual</p>
             <p className="text-3xl font-semibold tabular-nums">
               {valorAtual !== null ? valorAtual.toLocaleString("pt-BR") : "—"}
-              {kpi.unidade && valorAtual !== null && (
-                <span className="ml-1 text-base font-normal text-muted-foreground">{kpi.unidade}</span>
+              {valorAtual !== null && (
+                <span className="ml-1 text-base font-normal text-muted-foreground">{sufixoUnidade}</span>
               )}
             </p>
           </div>
+          {kpi.valor_inicial !== null && (
+            <div>
+              <p className="text-xs text-muted-foreground">De</p>
+              <p className="text-lg font-medium tabular-nums">
+                {kpi.valor_inicial.toLocaleString("pt-BR")}
+                {sufixoUnidade}
+              </p>
+            </div>
+          )}
           {kpi.meta !== null && (
             <div>
-              <p className="text-xs text-muted-foreground">Meta</p>
+              <p className="text-xs text-muted-foreground">Para (meta)</p>
               <p className="text-lg font-medium tabular-nums">
-                {kpi.meta.toLocaleString("pt-BR")} {kpi.unidade}
+                {kpi.meta.toLocaleString("pt-BR")}
+                {sufixoUnidade}
               </p>
             </div>
           )}
@@ -148,7 +159,8 @@ export default async function KpiPage({
                   className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
                 >
                   <span className="font-medium tabular-nums">
-                    {v.valor.toLocaleString("pt-BR")} {kpi.unidade}
+                    {v.valor.toLocaleString("pt-BR")}
+                    {sufixoUnidade}
                   </span>
                   <span className="text-muted-foreground">{formatarData(v.referencia_periodo)}</span>
                   <span className="text-xs text-muted-foreground">{ROTULO_TIPO[v.tipo_valor]}</span>
@@ -167,7 +179,7 @@ export default async function KpiPage({
           <h2 className="text-sm font-semibold text-muted-foreground">Definição</h2>
           <form action={atualizarKpi.bind(null, kpi.id)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="nome">Nome</Label>
+              <Label htmlFor="nome">Título</Label>
               <Input id="nome" name="nome" defaultValue={kpi.nome} required />
             </div>
 
@@ -177,11 +189,40 @@ export default async function KpiPage({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="formula">Fórmula</Label>
-              <Textarea id="formula" name="formula" defaultValue={kpi.formula ?? ""} />
+              <Label htmlFor="tipo_meta">Isso é medido em</Label>
+              <Select name="tipo_meta" defaultValue={kpi.tipo_meta}>
+                <SelectTrigger id="tipo_meta" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unidade">Unidade (vendas, R$, clientes...)</SelectItem>
+                  <SelectItem value="percentual">Porcentagem (%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="unidade">Nome da unidade (opcional)</Label>
+              <Input id="unidade" name="unidade" defaultValue={kpi.unidade ?? ""} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="valor_inicial">De quanto</Label>
+                <Input
+                  id="valor_inicial"
+                  name="valor_inicial"
+                  type="number"
+                  step="any"
+                  defaultValue={kpi.valor_inicial ?? ""}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="meta">Para quanto (meta)</Label>
+                <Input id="meta" name="meta" type="number" step="any" defaultValue={kpi.meta ?? ""} required />
+              </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="area_id">Área</Label>
                 <Select name="area_id" defaultValue={kpi.area_id ?? undefined}>
@@ -212,71 +253,6 @@ export default async function KpiPage({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="unidade">Unidade</Label>
-                <Input id="unidade" name="unidade" defaultValue={kpi.unidade ?? ""} />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="fonte">Fonte</Label>
-                <Input id="fonte" name="fonte" defaultValue={kpi.fonte ?? ""} />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="periodicidade">Periodicidade</Label>
-                <Select name="periodicidade" defaultValue={kpi.periodicidade}>
-                  <SelectTrigger id="periodicidade" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="diaria">Diária</SelectItem>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="trimestral">Trimestral</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="direcao">O que é bom</Label>
-                <Select name="direcao" defaultValue={kpi.direcao}>
-                  <SelectTrigger id="direcao" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="maior_melhor">Valor maior é melhor</SelectItem>
-                    <SelectItem value="menor_melhor">Valor menor é melhor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="meta">Meta</Label>
-                <Input id="meta" name="meta" type="number" step="any" defaultValue={kpi.meta ?? ""} />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="limiar_atencao">Limiar de atenção</Label>
-                <Input
-                  id="limiar_atencao"
-                  name="limiar_atencao"
-                  type="number"
-                  step="any"
-                  defaultValue={kpi.limiar_atencao ?? ""}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="limiar_critico">Limiar crítico</Label>
-                <Input
-                  id="limiar_critico"
-                  name="limiar_critico"
-                  type="number"
-                  step="any"
-                  defaultValue={kpi.limiar_critico ?? ""}
-                />
               </div>
             </div>
 

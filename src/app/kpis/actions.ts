@@ -6,22 +6,17 @@ import { createClient } from "@/lib/supabase/server";
 
 function lerDefinicao(formData: FormData) {
   const meta = String(formData.get("meta") ?? "").trim();
-  const limiarAtencao = String(formData.get("limiar_atencao") ?? "").trim();
-  const limiarCritico = String(formData.get("limiar_critico") ?? "").trim();
+  const valorInicial = String(formData.get("valor_inicial") ?? "").trim();
 
   return {
     nome: String(formData.get("nome") ?? "").trim(),
     descricao: String(formData.get("descricao") ?? "").trim() || null,
     area_id: String(formData.get("area_id") ?? "") || null,
     responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
-    formula: String(formData.get("formula") ?? "").trim() || null,
+    tipo_meta: String(formData.get("tipo_meta") ?? "unidade"),
     unidade: String(formData.get("unidade") ?? "").trim() || null,
-    fonte: String(formData.get("fonte") ?? "").trim() || null,
-    periodicidade: String(formData.get("periodicidade") ?? "mensal"),
-    direcao: String(formData.get("direcao") ?? "maior_melhor"),
+    valor_inicial: valorInicial ? Number(valorInicial) : null,
     meta: meta ? Number(meta) : null,
-    limiar_atencao: limiarAtencao ? Number(limiarAtencao) : null,
-    limiar_critico: limiarCritico ? Number(limiarCritico) : null,
   };
 }
 

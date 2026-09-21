@@ -1,32 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { calcularFarol } from "./kpi-status";
+import { calcularFarolPorMeta } from "./kpi-status";
 
-describe("calcularFarol", () => {
-  it("maior_melhor: valor abaixo do critico é crítico", () => {
-    expect(calcularFarol(50, 80, 60, "maior_melhor")).toBe("critico");
+describe("calcularFarolPorMeta", () => {
+  it("meta atingida ou superada é ok (meta de subir: 2 → 4)", () => {
+    expect(calcularFarolPorMeta(4, 2, 4)).toBe("ok");
+    expect(calcularFarolPorMeta(5, 2, 4)).toBe("ok");
   });
 
-  it("maior_melhor: valor entre os limiares é atenção", () => {
-    expect(calcularFarol(70, 80, 60, "maior_melhor")).toBe("atencao");
+  it("metade do caminho é atenção (2 → 4, valor atual 3)", () => {
+    expect(calcularFarolPorMeta(3, 2, 4)).toBe("atencao");
   });
 
-  it("maior_melhor: valor acima do limiar de atenção é ok", () => {
-    expect(calcularFarol(90, 80, 60, "maior_melhor")).toBe("ok");
+  it("menos da metade do caminho é crítico (2 → 4, valor atual 2.2)", () => {
+    expect(calcularFarolPorMeta(2.2, 2, 4)).toBe("critico");
   });
 
-  it("menor_melhor: valor acima do crítico é crítico", () => {
-    expect(calcularFarol(15, 5, 10, "menor_melhor")).toBe("critico");
+  it("funciona igual pra meta de descer (churn 10% → 2%)", () => {
+    expect(calcularFarolPorMeta(2, 10, 2)).toBe("ok"); // chegou na meta
+    expect(calcularFarolPorMeta(6, 10, 2)).toBe("atencao"); // meio caminho
+    expect(calcularFarolPorMeta(9, 10, 2)).toBe("critico"); // quase não andou
   });
 
-  it("menor_melhor: valor abaixo do limiar de atenção é ok", () => {
-    expect(calcularFarol(2, 5, 10, "menor_melhor")).toBe("ok");
+  it("sem valor registrado ainda retorna sem_dados", () => {
+    expect(calcularFarolPorMeta(null, 2, 4)).toBe("sem_dados");
   });
 
-  it("sem valor registrado retorna sem_dados", () => {
-    expect(calcularFarol(null, 80, 60, "maior_melhor")).toBe("sem_dados");
+  it("sem meta ou valor inicial definidos retorna sem_dados", () => {
+    expect(calcularFarolPorMeta(3, null, 4)).toBe("sem_dados");
+    expect(calcularFarolPorMeta(3, 2, null)).toBe("sem_dados");
   });
 
-  it("sem limiares definidos retorna sem_dados mesmo com valor", () => {
-    expect(calcularFarol(50, null, null, "maior_melhor")).toBe("sem_dados");
+  it("meta igual ao valor inicial: ok só se já estiver exatamente na meta", () => {
+    expect(calcularFarolPorMeta(5, 5, 5)).toBe("ok");
+    expect(calcularFarolPorMeta(4, 5, 5)).toBe("atencao");
   });
 });
