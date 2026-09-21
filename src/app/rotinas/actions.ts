@@ -19,6 +19,7 @@ type DadosTarefaBase = {
   responsavel_id: string | null;
   prioridade: string;
   horario: string | null;
+  cor: string | null;
   criado_por: string;
 };
 
@@ -56,6 +57,7 @@ export async function criarTarefa(formData: FormData) {
   const prioridade = String(formData.get("prioridade") ?? "media");
   const prazo = String(formData.get("prazo") ?? "") || null;
   const horario = String(formData.get("horario") ?? "") || null;
+  const cor = String(formData.get("cor") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
   const frequencia = String(formData.get("frequencia") ?? "nenhuma") as Frequencia | "nenhuma";
 
@@ -69,6 +71,7 @@ export async function criarTarefa(formData: FormData) {
       prioridade,
       prazo,
       horario,
+      cor,
       criado_por: user.id,
     })
     .select("id")
@@ -97,6 +100,7 @@ export async function criarTarefa(formData: FormData) {
         responsavel_id: responsavelId,
         prioridade,
         horario,
+        cor,
         criado_por: user.id,
       };
       const proximasDatas = gerarProximasDatas(
@@ -125,6 +129,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
   const prioridade = String(formData.get("prioridade") ?? "media");
   const prazo = String(formData.get("prazo") ?? "") || null;
   const horario = String(formData.get("horario") ?? "") || null;
+  const cor = String(formData.get("cor") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
 
   await supabase
@@ -137,6 +142,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
       prioridade,
       prazo,
       horario,
+      cor,
     })
     .eq("id", taskId);
 
@@ -208,6 +214,7 @@ export async function atualizarStatus(
         responsavel_id: tarefaAtual.responsavel_id,
         prioridade: tarefaAtual.prioridade,
         horario: tarefaAtual.horario,
+        cor: tarefaAtual.cor,
         criado_por: user?.id ?? tarefaAtual.criado_por,
       });
     }

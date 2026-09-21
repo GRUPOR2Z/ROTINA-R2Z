@@ -11,11 +11,13 @@ import {
   paramDoMes,
   proximoMes,
 } from "@/lib/calendar";
+import { infoCor } from "@/lib/task-colors";
 
-function corDaTarefa(status: string) {
-  if (status === "concluida") return "bg-muted text-muted-foreground line-through";
-  if (status === "bloqueada") return "bg-destructive/10 text-destructive";
-  return "bg-primary/10 text-primary";
+function corDaTarefa(status: string, cor: string | null) {
+  const base = infoCor(cor)?.chip ?? "bg-primary/10 text-primary";
+  if (status === "concluida") return `${base} line-through opacity-60`;
+  if (status === "bloqueada") return `${base} ring-1 ring-inset ring-destructive`;
+  return base;
 }
 
 export default async function CalendarioPage({
@@ -37,7 +39,7 @@ export default async function CalendarioPage({
   const supabase = await createClient();
   const { data: tarefas } = await supabase
     .from("tasks")
-    .select("id, titulo, status, prazo, horario")
+    .select("id, titulo, status, prazo, horario, cor")
     .gte("prazo", inicio)
     .lte("prazo", fim)
     .order("horario", { ascending: true, nullsFirst: false })
@@ -148,7 +150,7 @@ export default async function CalendarioPage({
                       <Link
                         key={t.id}
                         href={`/rotinas/${t.id}`}
-                        className={`truncate rounded px-1 py-0.5 text-[11px] hover:underline ${corDaTarefa(t.status)}`}
+                        className={`truncate rounded px-1 py-0.5 text-[11px] hover:underline ${corDaTarefa(t.status, t.cor)}`}
                       >
                         {t.horario ? `${t.horario.slice(0, 5)} · ${t.titulo}` : t.titulo}
                       </Link>

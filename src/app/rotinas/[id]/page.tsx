@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ColorSelect } from "@/components/rotinas/color-select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
 import { atualizarTarefa, excluirTarefa, pararRecorrencia } from "../actions";
@@ -184,6 +185,11 @@ export default async function TarefaPage({
                   type="time"
                   defaultValue={tarefa.horario ? tarefa.horario.slice(0, 5) : ""}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="cor">Cor</Label>
+                <ColorSelect defaultValue={tarefa.cor ?? undefined} />
               </div>
             </div>
 

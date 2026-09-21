@@ -15,6 +15,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
 import { filtrarProximasPendentes } from "@/lib/rotinas";
+import { infoCor } from "@/lib/task-colors";
 
 export default async function RotinasPage({
   searchParams,
@@ -28,7 +29,7 @@ export default async function RotinasPage({
   let query = supabase
     .from("tasks")
     .select(
-      "id, titulo, status, prioridade, prazo, horario, areas(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
+      "id, titulo, status, prioridade, prazo, horario, cor, areas(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
     )
     .order("prazo", { ascending: true, nullsFirst: false })
     .order("criado_em", { ascending: false });
@@ -113,7 +114,16 @@ export default async function RotinasPage({
                   return (
                     <TableRow key={t.id}>
                       <TableCell>
-                        <Link href={`/rotinas/${t.id}`} className="font-medium hover:underline">
+                        <Link
+                          href={`/rotinas/${t.id}`}
+                          className="inline-flex items-center font-medium hover:underline"
+                        >
+                          {t.cor && (
+                            <span
+                              className={`mr-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${infoCor(t.cor)?.dot}`}
+                              title="Cor da tarefa"
+                            />
+                          )}
                           {rotinaId && (
                             <span className="mr-1 text-muted-foreground" title="Tarefa recorrente">
                               ↻

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ColorSelect } from "@/components/rotinas/color-select";
 import { getAreasEMembros } from "@/lib/lookups";
 import { criarTarefa } from "../actions";
 
@@ -93,6 +94,11 @@ export default async function NovaTarefaPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="horario">Horário (opcional)</Label>
               <Input id="horario" name="horario" type="time" />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="cor">Cor</Label>
+              <ColorSelect />
             </div>
 
             <div className="col-span-2 flex flex-col gap-2">
