@@ -37,9 +37,14 @@ export default async function ProcessosPage({
               Como as coisas são feitas — documentado, versionado, sempre consultável.
             </p>
           </div>
-          <Link href="/processos/novo" className={buttonVariants()}>
-            Novo processo
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/processos/importar" className={buttonVariants({ variant: "outline" })}>
+              Importar arquivo
+            </Link>
+            <Link href="/processos/novo" className={buttonVariants()}>
+              Novo processo
+            </Link>
+          </div>
         </div>
 
         <ProcessFilterBar areas={areas} />

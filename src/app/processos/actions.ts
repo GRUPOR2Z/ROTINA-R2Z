@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { exportarProcessoParaGoogleDocs } from "@/lib/google-docs";
+import { extrairTextoDeArquivo } from "@/lib/extract-text";
 
 const CAMPOS_CONTEUDO = [
   "titulo",
@@ -50,6 +51,55 @@ export async function criarProcesso(formData: FormData) {
     .single();
 
   if (error || !data) return;
+
+  revalidatePath("/processos");
+  redirect(`/processos/${data.id}`);
+}
+
+export async function importarProcesso(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const arquivo = formData.get("arquivo");
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    redirect("/processos/importar?erro=Selecione+um+arquivo+.docx+ou+.pdf.");
+  }
+
+  const nomeSemExtensao = arquivo.name.replace(/\.[^/.]+$/, "");
+  const areaId = String(formData.get("area_id") ?? "") || null;
+  const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
+
+  let textoExtraido: string;
+  try {
+    const buffer = Buffer.from(await arquivo.arrayBuffer());
+    textoExtraido = await extrairTextoDeArquivo(buffer, arquivo.name);
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : "Não foi possível ler o arquivo.";
+    redirect(`/processos/importar?erro=${encodeURIComponent(mensagem)}`);
+  }
+
+  if (!textoExtraido) {
+    redirect("/processos/importar?erro=O+arquivo+não+tinha+texto+para+extrair.");
+  }
+
+  const { data, error } = await supabase
+    .from("processes")
+    .insert({
+      titulo: nomeSemExtensao || "Processo importado",
+      area_id: areaId,
+      responsavel_id: responsavelId,
+      passo_a_passo: textoExtraido,
+      criado_por: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    redirect("/processos/importar?erro=Não+foi+possível+salvar+o+processo.");
+  }
 
   revalidatePath("/processos");
   redirect(`/processos/${data.id}`);
