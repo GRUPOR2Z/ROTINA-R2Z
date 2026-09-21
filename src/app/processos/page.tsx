@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/states/empty-state";
 import { ProcessFilterBar } from "@/components/processos/filter-bar";
 import { ProcessStatusBadge } from "@/components/processos/status-badge";
+import { ProcessCardMenu } from "@/components/processos/card-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
@@ -18,7 +19,9 @@ export default async function ProcessosPage({
 
   let query = supabase
     .from("processes")
-    .select("id, titulo, status, objetivo, areas(nome), profiles!processes_responsavel_id_fkey(nome, email)")
+    .select(
+      "id, titulo, status, objetivo, google_doc_url, areas(nome), profiles!processes_responsavel_id_fkey(nome, email)",
+    )
     .order("atualizado_em", { ascending: false });
 
   if (params.status) query = query.eq("status", params.status);
@@ -63,14 +66,21 @@ export default async function ProcessosPage({
               );
 
               return (
-                <Link
+                <div
                   key={p.id}
-                  href={`/processos/${p.id}`}
-                  className="flex flex-col gap-2 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+                  className="group relative flex flex-col gap-2 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
                 >
+                  <Link
+                    href={`/processos/${p.id}`}
+                    className="absolute inset-0 rounded-lg"
+                    aria-label={p.titulo}
+                  />
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-sm font-medium">{p.titulo}</h3>
-                    <ProcessStatusBadge status={p.status} />
+                    <div className="relative z-10 flex items-center gap-1">
+                      <ProcessStatusBadge status={p.status} />
+                      <ProcessCardMenu processId={p.id} googleDocUrl={p.google_doc_url} />
+                    </div>
                   </div>
                   {p.objetivo && (
                     <p className="line-clamp-2 text-xs text-muted-foreground">{p.objetivo}</p>
@@ -80,7 +90,7 @@ export default async function ProcessosPage({
                     {area && responsavel && <span>·</span>}
                     {responsavel && <span>{responsavel.nome || responsavel.email}</span>}
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
