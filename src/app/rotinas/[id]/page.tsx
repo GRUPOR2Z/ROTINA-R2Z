@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
-import { atualizarTarefa, excluirTarefa } from "../actions";
+import { atualizarTarefa, excluirTarefa, pararRecorrencia } from "../actions";
+
+const ROTULO_FREQUENCIA: Record<string, string> = {
+  diaria: "todo dia",
+  semanal: "toda semana",
+  mensal: "todo mês",
+};
 
 export default async function TarefaPage({
   params,
@@ -50,6 +56,16 @@ export default async function TarefaPage({
       .order("criado_em", { ascending: false }),
   ]);
 
+  const { data: ocorrencia } = await supabase
+    .from("task_occurrences")
+    .select("recurring_routine_id, recurring_routines(frequencia, ativa)")
+    .eq("task_id", id)
+    .maybeSingle();
+
+  const rotina = ocorrencia?.recurring_routines as unknown as
+    | { frequencia: string; ativa: boolean }
+    | null;
+
   const atrasada = estaAtrasada(tarefa.prazo, tarefa.status);
 
   return (
@@ -69,6 +85,21 @@ export default async function TarefaPage({
           {tarefa.status === "bloqueada" && tarefa.bloqueio_motivo && (
             <p className="mt-1 text-sm text-destructive">
               Bloqueada: {tarefa.bloqueio_motivo}
+            </p>
+          )}
+          {rotina?.ativa && (
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <span>↻ Repete {ROTULO_FREQUENCIA[rotina.frequencia]}</span>
+              <form action={pararRecorrencia.bind(null, tarefa.id)}>
+                <Button type="submit" variant="link" size="sm" className="h-auto p-0 text-sm">
+                  Parar recorrência
+                </Button>
+              </form>
+            </div>
+          )}
+          {rotina && !rotina.ativa && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              ↻ Repetia {ROTULO_FREQUENCIA[rotina.frequencia]} — recorrência parada
             </p>
           )}
         </div>

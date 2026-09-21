@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { proximaData, type Frequencia } from "@/lib/calendar";
 
 export async function criarTarefa(formData: FormData) {
   const supabase = await createClient();
@@ -20,6 +21,7 @@ export async function criarTarefa(formData: FormData) {
   const prazo = String(formData.get("prazo") ?? "") || null;
   const horario = String(formData.get("horario") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
+  const frequencia = String(formData.get("frequencia") ?? "nenhuma") as Frequencia | "nenhuma";
 
   const { data, error } = await supabase
     .from("tasks")
@@ -37,6 +39,20 @@ export async function criarTarefa(formData: FormData) {
     .single();
 
   if (error || !data) return;
+
+  if (frequencia !== "nenhuma" && prazo) {
+    const { data: rotina } = await supabase
+      .from("recurring_routines")
+      .insert({ frequencia, criado_por: user.id })
+      .select("id")
+      .single();
+
+    if (rotina) {
+      await supabase
+        .from("task_occurrences")
+        .insert({ recurring_routine_id: rotina.id, task_id: data.id, data_prevista: prazo });
+    }
+  }
 
   revalidatePath("/rotinas");
   redirect(`/rotinas/${data.id}`);
@@ -79,6 +95,12 @@ export async function atualizarStatus(
 ) {
   const supabase = await createClient();
 
+  const { data: tarefaAtual } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", taskId)
+    .single();
+
   await supabase
     .from("tasks")
     .update({
@@ -88,8 +110,76 @@ export async function atualizarStatus(
     })
     .eq("id", taskId);
 
+  if (status === "concluida" && tarefaAtual?.prazo) {
+    const { data: ocorrencia } = await supabase
+      .from("task_occurrences")
+      .select("recurring_routine_id")
+      .eq("task_id", taskId)
+      .maybeSingle();
+
+    const rotina = ocorrencia
+      ? (
+          await supabase
+            .from("recurring_routines")
+            .select("frequencia, ativa")
+            .eq("id", ocorrencia.recurring_routine_id)
+            .maybeSingle()
+        ).data
+      : null;
+
+    if (ocorrencia && rotina?.ativa) {
+      const proximoPrazo = proximaData(tarefaAtual.prazo, rotina.frequencia as Frequencia);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { data: novaTarefa } = await supabase
+        .from("tasks")
+        .insert({
+          titulo: tarefaAtual.titulo,
+          descricao: tarefaAtual.descricao,
+          area_id: tarefaAtual.area_id,
+          responsavel_id: tarefaAtual.responsavel_id,
+          prioridade: tarefaAtual.prioridade,
+          prazo: proximoPrazo,
+          horario: tarefaAtual.horario,
+          criado_por: user?.id ?? tarefaAtual.criado_por,
+        })
+        .select("id")
+        .single();
+
+      if (novaTarefa) {
+        await supabase.from("task_occurrences").insert({
+          recurring_routine_id: ocorrencia.recurring_routine_id,
+          task_id: novaTarefa.id,
+          data_prevista: proximoPrazo,
+        });
+      }
+    }
+  }
+
   revalidatePath(`/rotinas/${taskId}`);
   revalidatePath("/rotinas");
+  revalidatePath("/rotinas/calendario");
+}
+
+export async function pararRecorrencia(taskId: string) {
+  const supabase = await createClient();
+
+  const { data: ocorrencia } = await supabase
+    .from("task_occurrences")
+    .select("recurring_routine_id")
+    .eq("task_id", taskId)
+    .maybeSingle();
+
+  if (ocorrencia) {
+    await supabase
+      .from("recurring_routines")
+      .update({ ativa: false })
+      .eq("id", ocorrencia.recurring_routine_id);
+  }
+
+  revalidatePath(`/rotinas/${taskId}`);
 }
 
 export async function excluirTarefa(taskId: string) {

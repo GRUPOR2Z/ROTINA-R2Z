@@ -94,6 +94,24 @@ export default async function NovaTarefaPage() {
               <Label htmlFor="horario">Horário (opcional)</Label>
               <Input id="horario" name="horario" type="time" />
             </div>
+
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label htmlFor="frequencia">Repetir</Label>
+              <Select name="frequencia" defaultValue="nenhuma">
+                <SelectTrigger id="frequencia" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhuma">Não se repete</SelectItem>
+                  <SelectItem value="diaria">Repete todo dia</SelectItem>
+                  <SelectItem value="semanal">Repete toda semana</SelectItem>
+                  <SelectItem value="mensal">Repete todo mês</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Precisa de um prazo definido — a próxima ocorrência é criada automaticamente quando você concluir esta.
+              </p>
+            </div>
           </div>
 
           <Button type="submit" className="mt-2 self-start">

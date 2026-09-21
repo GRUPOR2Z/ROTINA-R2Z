@@ -20,6 +20,19 @@ export function getMonthGrid(year: number, month: number) {
   return days;
 }
 
+export type Frequencia = "diaria" | "semanal" | "mensal";
+
+/** Calcula a proxima data de uma tarefa recorrente. `prazo` no formato
+ * "YYYY-MM-DD". Usa horario local (meia-noite) para nao deslocar o
+ * dia por causa de fuso horario. */
+export function proximaData(prazo: string, frequencia: Frequencia) {
+  const d = new Date(`${prazo}T00:00:00`);
+  if (frequencia === "diaria") d.setDate(d.getDate() + 1);
+  if (frequencia === "semanal") d.setDate(d.getDate() + 7);
+  if (frequencia === "mensal") d.setMonth(d.getMonth() + 1);
+  return dateKey(d);
+}
+
 export function mesAnterior(year: number, month: number) {
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
