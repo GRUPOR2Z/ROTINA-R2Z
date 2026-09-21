@@ -32,6 +32,8 @@ const tabelas = [
   "task_comments",
   "recurring_routines",
   "task_occurrences",
+  "processes",
+  "process_versions",
 ];
 
 for (const tabela of tabelas) {
