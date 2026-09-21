@@ -146,6 +146,27 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
     })
     .eq("id", taskId);
 
+  // cor e' da serie, nao so dessa ocorrencia -- propaga pra todas as
+  // ocorrencias (passadas pendentes e futuras) da mesma rotina.
+  const { data: ocorrencia } = await supabase
+    .from("task_occurrences")
+    .select("recurring_routine_id")
+    .eq("task_id", taskId)
+    .maybeSingle();
+
+  if (ocorrencia) {
+    const { data: irmas } = await supabase
+      .from("task_occurrences")
+      .select("task_id")
+      .eq("recurring_routine_id", ocorrencia.recurring_routine_id);
+
+    const idsIrmas = (irmas ?? []).map((o) => o.task_id).filter((id) => id !== taskId);
+    if (idsIrmas.length > 0) {
+      await supabase.from("tasks").update({ cor }).in("id", idsIrmas);
+    }
+    revalidatePath("/rotinas/calendario");
+  }
+
   revalidatePath(`/rotinas/${taskId}`);
   revalidatePath("/rotinas");
 }
