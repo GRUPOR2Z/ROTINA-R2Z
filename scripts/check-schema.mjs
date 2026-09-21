@@ -30,6 +30,8 @@ const tabelas = [
   "tasks",
   "task_checklist_items",
   "task_comments",
+  "recurring_routines",
+  "task_occurrences",
 ];
 
 for (const tabela of tabelas) {
