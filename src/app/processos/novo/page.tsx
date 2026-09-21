@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,9 +105,9 @@ export default async function NovoProcessoPage() {
             <Textarea id="criterios_conclusao" name="criterios_conclusao" />
           </div>
 
-          <Button type="submit" className="mt-2 self-start">
+          <SubmitButton className="mt-2 self-start" pendingText="Criando…">
             Criar processo
-          </Button>
+          </SubmitButton>
         </form>
       </div>
     </AppShell>

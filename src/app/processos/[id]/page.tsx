@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProcessStatusBadge } from "@/components/processos/status-badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -85,9 +86,9 @@ export default async function ProcessoPage({
           )}
           {(processo.status === "rascunho" || processo.status === "revisao") && (
             <form action={publicarProcesso.bind(null, processo.id)}>
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm" pendingText="Publicando…">
                 Publicar
-              </Button>
+              </SubmitButton>
             </form>
           )}
           {processo.status !== "arquivado" && (
