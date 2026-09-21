@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProcessStatusBadge } from "@/components/processos/status-badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
   arquivarProcesso,
   reabrirProcesso,
   excluirProcesso,
+  exportarParaGoogleDocs,
 } from "../actions";
 
 type Snapshot = {
@@ -104,6 +105,21 @@ export default async function ProcessoPage({
                 Reabrir como rascunho
               </Button>
             </form>
+          )}
+          <form action={exportarParaGoogleDocs.bind(null, processo.id)}>
+            <SubmitButton size="sm" variant="outline" pendingText="Enviando…">
+              {processo.google_doc_url ? "Atualizar no Google Docs" : "Exportar para Google Docs"}
+            </SubmitButton>
+          </form>
+          {processo.google_doc_url && (
+            <a
+              href={processo.google_doc_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
+              Abrir no Google Docs ↗
+            </a>
           )}
         </div>
 

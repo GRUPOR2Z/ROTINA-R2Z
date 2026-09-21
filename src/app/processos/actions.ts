@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { exportarProcessoParaGoogleDocs } from "@/lib/google-docs";
 
 const CAMPOS_CONTEUDO = [
   "titulo",
@@ -144,6 +145,34 @@ export async function reabrirProcesso(processId: string) {
   await supabase.from("processes").update({ status: "rascunho" }).eq("id", processId);
   revalidatePath(`/processos/${processId}`);
   revalidatePath("/processos");
+}
+
+export async function exportarParaGoogleDocs(processId: string) {
+  const supabase = await createClient();
+
+  const { data: processo } = await supabase
+    .from("processes")
+    .select(`${CAMPOS_CONTEUDO.join(",")}, google_doc_url`)
+    .eq("id", processId)
+    .single<{
+      titulo: string;
+      objetivo: string | null;
+      pre_requisitos: string | null;
+      gatilho: string | null;
+      entradas: string | null;
+      passo_a_passo: string | null;
+      saidas: string | null;
+      criterios_conclusao: string | null;
+      google_doc_url: string | null;
+    }>();
+
+  if (!processo) return;
+
+  const url = await exportarProcessoParaGoogleDocs(processo, processo.google_doc_url);
+
+  await supabase.from("processes").update({ google_doc_url: url }).eq("id", processId);
+
+  revalidatePath(`/processos/${processId}`);
 }
 
 export async function excluirProcesso(processId: string) {
