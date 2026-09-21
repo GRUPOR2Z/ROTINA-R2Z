@@ -4,23 +4,37 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function criarCiclo(formData: FormData) {
+function lerDefinicao(formData: FormData) {
+  const meta = String(formData.get("meta") ?? "").trim();
+  const valorInicial = String(formData.get("valor_inicial") ?? "").trim();
+  const prazo = String(formData.get("prazo") ?? "").trim();
+
+  return {
+    titulo: String(formData.get("titulo") ?? "").trim(),
+    descricao: String(formData.get("descricao") ?? "").trim() || null,
+    area_id: String(formData.get("area_id") ?? "") || null,
+    responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
+    tipo_meta: String(formData.get("tipo_meta") ?? "unidade"),
+    unidade: String(formData.get("unidade") ?? "").trim() || null,
+    valor_inicial: valorInicial ? Number(valorInicial) : null,
+    meta: meta ? Number(meta) : 0,
+    prazo: prazo || null,
+  };
+}
+
+export async function criarOkr(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const nome = String(formData.get("nome") ?? "").trim();
-  const tipo = String(formData.get("tipo") ?? "trimestral");
-  const dataInicio = String(formData.get("data_inicio") ?? "");
-  const dataFim = String(formData.get("data_fim") ?? "");
-
-  if (!nome || !dataInicio || !dataFim) return;
+  const definicao = lerDefinicao(formData);
+  if (!definicao.titulo) return;
 
   const { data, error } = await supabase
-    .from("okr_cycles")
-    .insert({ nome, tipo, data_inicio: dataInicio, data_fim: dataFim, criado_por: user.id })
+    .from("okrs")
+    .insert({ ...definicao, criado_por: user.id })
     .select("id")
     .single();
 
@@ -30,108 +44,52 @@ export async function criarCiclo(formData: FormData) {
   redirect(`/okrs/${data.id}`);
 }
 
-export async function encerrarCiclo(cycleId: string) {
+export async function atualizarOkr(okrId: string, formData: FormData) {
   const supabase = await createClient();
-  await supabase.from("okr_cycles").update({ status: "encerrado" }).eq("id", cycleId);
-  revalidatePath(`/okrs/${cycleId}`);
+  const definicao = lerDefinicao(formData);
+  if (!definicao.titulo) return;
+
+  await supabase.from("okrs").update(definicao).eq("id", okrId);
+
+  revalidatePath(`/okrs/${okrId}`);
   revalidatePath("/okrs");
 }
 
-export async function excluirCiclo(cycleId: string) {
-  const supabase = await createClient();
-  await supabase.from("okr_cycles").delete().eq("id", cycleId);
-  revalidatePath("/okrs");
-  redirect("/okrs");
-}
-
-export async function criarObjetivo(cycleId: string, formData: FormData) {
+export async function registrarValor(okrId: string, formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const titulo = String(formData.get("titulo") ?? "").trim();
-  if (!titulo) return;
+  const valor = String(formData.get("valor") ?? "").trim();
+  const referenciaPeriodo = String(formData.get("referencia_periodo") ?? "").trim();
+  const comentario = String(formData.get("comentario") ?? "").trim() || null;
 
-  const areaId = String(formData.get("area_id") ?? "") || null;
-  const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
-  const descricao = String(formData.get("descricao") ?? "").trim() || null;
+  if (!valor || !referenciaPeriodo) return;
 
-  const { data, error } = await supabase
-    .from("objectives")
-    .insert({
-      okr_cycle_id: cycleId,
-      titulo,
-      descricao,
-      area_id: areaId,
-      responsavel_id: responsavelId,
-      criado_por: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) return;
-
-  revalidatePath(`/okrs/${cycleId}`);
-  redirect(`/okrs/objetivos/${data.id}`);
-}
-
-export async function excluirObjetivo(cycleId: string, objectiveId: string) {
-  const supabase = await createClient();
-  await supabase.from("objectives").delete().eq("id", objectiveId);
-  revalidatePath(`/okrs/${cycleId}`);
-  redirect(`/okrs/${cycleId}`);
-}
-
-export async function criarKeyResult(objectiveId: string, formData: FormData) {
-  const supabase = await createClient();
-
-  const titulo = String(formData.get("titulo") ?? "").trim();
-  const valorAlvo = String(formData.get("valor_alvo") ?? "").trim();
-  if (!titulo || !valorAlvo) return;
-
-  const valorInicial = String(formData.get("valor_inicial") ?? "0").trim();
-  const unidade = String(formData.get("unidade") ?? "").trim() || null;
-
-  await supabase.from("key_results").insert({
-    objective_id: objectiveId,
-    titulo,
-    unidade,
-    valor_inicial: Number(valorInicial || 0),
-    valor_atual: Number(valorInicial || 0),
-    valor_alvo: Number(valorAlvo),
+  await supabase.from("okr_values").insert({
+    okr_id: okrId,
+    valor: Number(valor),
+    referencia_periodo: referenciaPeriodo,
+    comentario,
+    criado_por: user.id,
   });
 
-  revalidatePath(`/okrs/objetivos/${objectiveId}`);
+  revalidatePath(`/okrs/${okrId}`);
+  revalidatePath("/okrs");
 }
 
-export async function atualizarValorKeyResult(
-  objectiveId: string,
-  keyResultId: string,
-  formData: FormData,
-) {
+export async function excluirValor(okrId: string, valorId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
-
-  const valorNovo = String(formData.get("valor_novo") ?? "").trim();
-  const comentario = String(formData.get("comentario") ?? "").trim() || null;
-  if (!valorNovo) return;
-
-  await supabase
-    .from("key_result_updates")
-    .insert({ key_result_id: keyResultId, valor_novo: Number(valorNovo), comentario, autor_id: user.id });
-
-  await supabase.from("key_results").update({ valor_atual: Number(valorNovo) }).eq("id", keyResultId);
-
-  revalidatePath(`/okrs/objetivos/${objectiveId}`);
+  await supabase.from("okr_values").delete().eq("id", valorId);
+  revalidatePath(`/okrs/${okrId}`);
+  revalidatePath("/okrs");
 }
 
-export async function excluirKeyResult(objectiveId: string, keyResultId: string) {
+export async function excluirOkr(okrId: string) {
   const supabase = await createClient();
-  await supabase.from("key_results").delete().eq("id", keyResultId);
-  revalidatePath(`/okrs/objetivos/${objectiveId}`);
+  await supabase.from("okrs").delete().eq("id", okrId);
+  revalidatePath("/okrs");
+  redirect("/okrs");
 }
