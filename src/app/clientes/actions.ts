@@ -155,6 +155,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
 
   const tipo = String(formData.get("tipo") ?? "").trim() || null;
   const horario = String(formData.get("horario") ?? "") || null;
+  const cor = String(formData.get("cor") ?? "") || null;
   const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
 
   await supabase.from("calendar_events").insert({
@@ -163,6 +164,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
     tipo,
     data,
     horario,
+    cor,
     responsavel_id: responsavelId,
     criado_por: user.id,
   });

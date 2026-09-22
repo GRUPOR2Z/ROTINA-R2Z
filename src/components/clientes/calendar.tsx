@@ -4,6 +4,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ColorSelect } from "@/components/rotinas/color-select";
 import { createClient } from "@/lib/supabase/server";
 import {
   DIAS_SEMANA,
@@ -14,6 +15,7 @@ import {
   paramDoMes,
   proximoMes,
 } from "@/lib/calendar";
+import { infoCor } from "@/lib/task-colors";
 import { criarEventoCalendario, excluirEventoCalendario } from "@/app/clientes/actions";
 
 type Membro = { id: string; nome: string | null; email: string | null };
@@ -44,7 +46,7 @@ export async function ClientCalendar({
   const supabase = await createClient();
   const { data: eventos } = await supabase
     .from("calendar_events")
-    .select("id, titulo, tipo, data, horario")
+    .select("id, titulo, tipo, data, horario, cor")
     .eq("client_id", clientId)
     .gte("data", inicio)
     .lte("data", fim)
@@ -112,7 +114,7 @@ export async function ClientCalendar({
                   {eventosDoDia.slice(0, 3).map((evento) => (
                     <span
                       key={evento.id}
-                      className="truncate rounded bg-primary/10 px-1 py-0.5 text-[11px] text-primary"
+                      className={`truncate rounded px-1 py-0.5 text-[11px] ${infoCor(evento.cor)?.chip ?? "bg-primary/10 text-primary"}`}
                       title={evento.titulo}
                     >
                       {evento.horario ? `${evento.horario.slice(0, 5)} · ${evento.titulo}` : evento.titulo}
@@ -148,7 +150,11 @@ export async function ClientCalendar({
               <Label htmlFor="horario-evento">Horário (opcional)</Label>
               <Input id="horario-evento" name="horario" type="time" />
             </div>
-            <div className="col-span-2 flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cor-evento">Cor</Label>
+              <ColorSelect />
+            </div>
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="responsavel-evento">Responsável</Label>
               <Select name="responsavel_id">
                 <SelectTrigger id="responsavel-evento" className="w-full">
@@ -175,7 +181,10 @@ export async function ClientCalendar({
           <h4 className="text-sm font-semibold text-muted-foreground">Eventos deste mês</h4>
           {(eventos ?? []).map((evento) => (
             <div key={evento.id} className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm">
-              <span>
+              <span className="inline-flex items-center gap-1.5">
+                {evento.cor && (
+                  <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${infoCor(evento.cor)?.dot}`} />
+                )}
                 {new Date(`${evento.data}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                 {evento.horario && ` · ${evento.horario.slice(0, 5)}`} — {evento.titulo}
                 {evento.tipo && <span className="ml-1 text-muted-foreground">({evento.tipo})</span>}
