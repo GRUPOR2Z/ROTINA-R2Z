@@ -139,3 +139,39 @@ export async function salvarPropriedades(clientId: string, formData: FormData) {
 
   revalidatePath(`/clientes/${clientId}`);
 }
+
+/** Evento da aba Conteudo. `horario` vazio = evento de dia inteiro,
+ * mesma convenção de `tasks.horario`. */
+export async function criarEventoCalendario(clientId: string, formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const titulo = String(formData.get("titulo") ?? "").trim();
+  const data = String(formData.get("data") ?? "");
+  if (!titulo || !data) return;
+
+  const tipo = String(formData.get("tipo") ?? "").trim() || null;
+  const horario = String(formData.get("horario") ?? "") || null;
+  const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
+
+  await supabase.from("calendar_events").insert({
+    client_id: clientId,
+    titulo,
+    tipo,
+    data,
+    horario,
+    responsavel_id: responsavelId,
+    criado_por: user.id,
+  });
+
+  revalidatePath(`/clientes/${clientId}`);
+}
+
+export async function excluirEventoCalendario(eventId: string, clientId: string) {
+  const supabase = await createClient();
+  await supabase.from("calendar_events").delete().eq("id", eventId);
+  revalidatePath(`/clientes/${clientId}`);
+}

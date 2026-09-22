@@ -19,6 +19,7 @@ import {
 import { ColorSelect } from "@/components/rotinas/color-select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
+import { getClientesAtivos } from "@/lib/clients-data";
 import { atualizarTarefa, excluirTarefa, pararRecorrencia } from "../actions";
 
 const ROTULO_FREQUENCIA: Record<string, string> = {
@@ -35,6 +36,7 @@ export default async function TarefaPage({
   const { id } = await params;
   const supabase = await createClient();
   const { areas, membros } = await getAreasEMembros();
+  const clientes = await getClientesAtivos();
 
   const { data: tarefa } = await supabase
     .from("tasks")
@@ -43,6 +45,10 @@ export default async function TarefaPage({
     .maybeSingle();
 
   if (!tarefa) notFound();
+
+  const clienteVinculado = tarefa.client_id
+    ? clientes.find((c) => c.id === tarefa.client_id)
+    : null;
 
   const [{ data: checklistItens }, { data: comentarios }] = await Promise.all([
     supabase
@@ -73,9 +79,18 @@ export default async function TarefaPage({
     <AppShell>
       <div className="flex max-w-3xl flex-col gap-8">
         <div>
-          <Link href="/rotinas" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Rotinas
-          </Link>
+          {clienteVinculado ? (
+            <Link
+              href={`/clientes/${clienteVinculado.id}?tab=tarefas`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← {clienteVinculado.nome}
+            </Link>
+          ) : (
+            <Link href="/rotinas" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Rotinas
+            </Link>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{tarefa.titulo}</h1>
             <StatusBadge status={tarefa.status} />
@@ -190,6 +205,22 @@ export default async function TarefaPage({
               <div className="flex flex-col gap-2">
                 <Label htmlFor="cor">Cor</Label>
                 <ColorSelect defaultValue={tarefa.cor ?? undefined} />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="client_id">Cliente</Label>
+                <Select name="client_id" defaultValue={tarefa.client_id ?? undefined}>
+                  <SelectTrigger id="client_id" className="w-full">
+                    <SelectValue placeholder="Nenhum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

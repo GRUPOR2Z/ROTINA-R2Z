@@ -20,6 +20,7 @@ type DadosTarefaBase = {
   prioridade: string;
   horario: string | null;
   cor: string | null;
+  client_id: string | null;
   criado_por: string;
 };
 
@@ -58,6 +59,7 @@ export async function criarTarefa(formData: FormData) {
   const prazo = String(formData.get("prazo") ?? "") || null;
   const horario = String(formData.get("horario") ?? "") || null;
   const cor = String(formData.get("cor") ?? "") || null;
+  const clientId = String(formData.get("client_id") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
   const frequencia = String(formData.get("frequencia") ?? "nenhuma") as Frequencia | "nenhuma";
 
@@ -72,6 +74,7 @@ export async function criarTarefa(formData: FormData) {
       prazo,
       horario,
       cor,
+      client_id: clientId,
       criado_por: user.id,
     })
     .select("id")
@@ -101,6 +104,7 @@ export async function criarTarefa(formData: FormData) {
         prioridade,
         horario,
         cor,
+        client_id: clientId,
         criado_por: user.id,
       };
       const proximasDatas = gerarProximasDatas(
@@ -130,6 +134,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
   const prazo = String(formData.get("prazo") ?? "") || null;
   const horario = String(formData.get("horario") ?? "") || null;
   const cor = String(formData.get("cor") ?? "") || null;
+  const clientId = String(formData.get("client_id") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
 
   await supabase
@@ -143,6 +148,7 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
       prazo,
       horario,
       cor,
+      client_id: clientId,
     })
     .eq("id", taskId);
 
@@ -236,6 +242,7 @@ export async function atualizarStatus(
         prioridade: tarefaAtual.prioridade,
         horario: tarefaAtual.horario,
         cor: tarefaAtual.cor,
+        client_id: tarefaAtual.client_id,
         criado_por: user?.id ?? tarefaAtual.criado_por,
       });
     }

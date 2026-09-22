@@ -4,11 +4,14 @@ import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/states/empty-state";
 import { ClientTabs } from "@/components/clientes/tabs";
 import { ClientPropertiesPanel } from "@/components/clientes/properties-panel";
-import { Button } from "@/components/ui/button";
+import { ClientTasksBoard } from "@/components/clientes/tasks-board";
+import { ClientCalendar } from "@/components/clientes/calendar";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase/server";
 import { getClienteComPropriedades } from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
 import {
@@ -28,16 +31,23 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; mes?: string }>;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, mes } = await searchParams;
 
   const dados = await getClienteComPropriedades(id);
   if (!dados) notFound();
 
   const { cliente, definicoes, valorPorDefinicao } = dados;
   const { membros } = await getAreasEMembros();
+
+  const supabase = await createClient();
+  const { data: tarefas } = await supabase
+    .from("tasks")
+    .select("id, titulo, status, prazo, horario, cor")
+    .eq("client_id", id)
+    .order("prazo", { ascending: true, nullsFirst: false });
 
   return (
     <AppShell>
@@ -131,17 +141,23 @@ export default async function ClientePage({
 
         <ClientTabs
           abaInicial={tab ?? "conteudo"}
-          conteudo={
-            <EmptyState
-              title="Calendário e anotações do cliente"
-              description="Chega na Fase B: calendário mensal do cliente e seções de conteúdo (texto, links, checklists, indicadores)."
-            />
-          }
+          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} />}
           tarefas={
-            <EmptyState
-              title="Controle de tarefas"
-              description="Chega na Fase B: o Kanban da equipe, filtrado só pras tarefas deste cliente."
-            />
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-end">
+                <Link href={`/rotinas/nova?cliente=${cliente.id}`} className={buttonVariants({ size: "sm" })}>
+                  Nova tarefa
+                </Link>
+              </div>
+              {!tarefas || tarefas.length === 0 ? (
+                <EmptyState
+                  title="Nenhuma tarefa deste cliente ainda"
+                  description="Crie a primeira tarefa pra começar a acompanhar a operação por aqui."
+                />
+              ) : (
+                <ClientTasksBoard tarefas={tarefas} />
+              )}
+            </div>
           }
           processos={
             <EmptyState

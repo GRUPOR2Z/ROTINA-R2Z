@@ -13,10 +13,17 @@ import {
 } from "@/components/ui/select";
 import { ColorSelect } from "@/components/rotinas/color-select";
 import { getAreasEMembros } from "@/lib/lookups";
+import { getClientesAtivos } from "@/lib/clients-data";
 import { criarTarefa } from "../actions";
 
-export default async function NovaTarefaPage() {
+export default async function NovaTarefaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cliente?: string }>;
+}) {
+  const { cliente } = await searchParams;
   const { areas, membros } = await getAreasEMembros();
+  const clientes = await getClientesAtivos();
 
   return (
     <AppShell>
@@ -99,6 +106,22 @@ export default async function NovaTarefaPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="cor">Cor</Label>
               <ColorSelect />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="client_id">Cliente (opcional)</Label>
+              <Select name="client_id" defaultValue={cliente}>
+                <SelectTrigger id="client_id" className="w-full">
+                  <SelectValue placeholder="Nenhum" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="col-span-2 flex flex-col gap-2">

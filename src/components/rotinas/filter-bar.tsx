@@ -20,9 +20,11 @@ const STATUS_OPTIONS = [
 export function FilterBar({
   areas,
   membros,
+  clientes,
 }: {
   areas: { id: string; nome: string }[];
   membros: { id: string; nome: string | null; email: string | null }[];
+  clientes: { id: string; nome: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -85,6 +87,23 @@ export function FilterBar({
           {membros.map((m) => (
             <SelectItem key={m.id} value={m.id}>
               {m.nome || m.email}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={searchParams.get("cliente") ?? "todos"}
+        onValueChange={(v) => setParam("cliente", v)}
+      >
+        <SelectTrigger className="h-9 w-48 text-sm">
+          <SelectValue placeholder="Todos os clientes" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="todos">Todos os clientes</SelectItem>
+          {clientes.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              {c.nome}
             </SelectItem>
           ))}
         </SelectContent>

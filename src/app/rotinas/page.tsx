@@ -14,22 +14,24 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
+import { getClientesAtivos } from "@/lib/clients-data";
 import { filtrarProximasPendentes } from "@/lib/rotinas";
 import { infoCor } from "@/lib/task-colors";
 
 export default async function RotinasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; area?: string; responsavel?: string }>;
+  searchParams: Promise<{ status?: string; area?: string; responsavel?: string; cliente?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
   const { areas, membros } = await getAreasEMembros();
+  const clientes = await getClientesAtivos();
 
   let query = supabase
     .from("tasks")
     .select(
-      "id, titulo, status, prioridade, prazo, horario, cor, areas(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
+      "id, titulo, status, prioridade, prazo, horario, cor, areas(nome), clients(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
     )
     .order("prazo", { ascending: true, nullsFirst: false })
     .order("criado_em", { ascending: false });
@@ -37,6 +39,7 @@ export default async function RotinasPage({
   if (params.status) query = query.eq("status", params.status);
   if (params.area) query = query.eq("area_id", params.area);
   if (params.responsavel) query = query.eq("responsavel_id", params.responsavel);
+  if (params.cliente) query = query.eq("client_id", params.cliente);
 
   const { data: todasTarefas } = await query;
 
@@ -83,7 +86,7 @@ export default async function RotinasPage({
           </Link>
         </div>
 
-        <FilterBar areas={areas} membros={membros} />
+        <FilterBar areas={areas} membros={membros} clientes={clientes} />
 
         {!tarefas || tarefas.length === 0 ? (
           <EmptyState
@@ -96,6 +99,7 @@ export default async function RotinasPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Tarefa</TableHead>
+                  <TableHead>Cliente</TableHead>
                   <TableHead>Área</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Prazo</TableHead>
@@ -105,6 +109,7 @@ export default async function RotinasPage({
               <TableBody>
                 {tarefas.map((t) => {
                   const area = (t.areas as unknown as { nome: string } | null)?.nome;
+                  const cliente = (t.clients as unknown as { nome: string } | null)?.nome;
                   const responsavel = (
                     t.profiles as unknown as { nome: string | null; email: string | null } | null
                   );
@@ -137,6 +142,7 @@ export default async function RotinasPage({
                           )}
                         </Link>
                       </TableCell>
+                      <TableCell className="text-muted-foreground">{cliente || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{area || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {responsavel?.nome || responsavel?.email || "—"}

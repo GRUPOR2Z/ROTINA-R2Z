@@ -47,3 +47,16 @@ export async function getClienteComPropriedades(clientId: string) {
 
   return { cliente, definicoes, valorPorDefinicao };
 }
+
+/** Lista enxuta pra selects (vincular tarefa a cliente, filtro de
+ * rotinas, etc.) -- não carrega propriedade nenhuma. */
+export async function getClientesAtivos() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("clients")
+    .select("id, nome")
+    .eq("arquivado", false)
+    .order("nome");
+
+  return data ?? [];
+}
