@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { ordenarDefinicoes, type DefinicaoPropriedade } from "@/lib/client-properties";
+import {
+  formatarValorPropriedade,
+  ordenarDefinicoes,
+  type DefinicaoPropriedade,
+} from "@/lib/client-properties";
 
 type LinhaDefinicao = DefinicaoPropriedade & { tipo_cliente: string | null; ordem: number; ativo: boolean };
 
@@ -59,4 +63,43 @@ export async function getClientesAtivos() {
     .order("nome");
 
   return data ?? [];
+}
+
+/** Badges pra galeria: valores das propriedades tipo "seleção única"
+ * de cada cliente, já formatados pelo rótulo da opção (ex: "Ativo",
+ * "Em andamento") -- é o mesmo efeito visual do "Status" do Notion,
+ * sem precisar de uma propriedade fixa nova pra isso. */
+export async function getBadgesPorCliente() {
+  const supabase = await createClient();
+
+  const { data: definicoes } = await supabase
+    .from("client_property_definitions")
+    .select("id, chave, rotulo, tipo_campo, opcoes, obrigatorio")
+    .eq("tipo_campo", "select")
+    .eq("ativo", true)
+    .returns<DefinicaoPropriedade[]>();
+
+  const badgesPorCliente = new Map<string, string[]>();
+  if (!definicoes || definicoes.length === 0) return badgesPorCliente;
+
+  const { data: valores } = await supabase
+    .from("client_property_values")
+    .select("client_id, property_definition_id, valor")
+    .in(
+      "property_definition_id",
+      definicoes.map((d) => d.id),
+    );
+
+  const definicaoPorId = new Map(definicoes.map((d) => [d.id, d]));
+
+  for (const valor of valores ?? []) {
+    const definicao = definicaoPorId.get(valor.property_definition_id);
+    if (!definicao) continue;
+
+    const lista = badgesPorCliente.get(valor.client_id) ?? [];
+    lista.push(formatarValorPropriedade(definicao, valor.valor));
+    badgesPorCliente.set(valor.client_id, lista);
+  }
+
+  return badgesPorCliente;
 }
