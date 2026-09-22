@@ -38,6 +38,9 @@ const tabelas = [
   "kpi_values",
   "okrs",
   "okr_values",
+  "clients",
+  "client_property_definitions",
+  "client_property_values",
 ];
 
 for (const tabela of tabelas) {
