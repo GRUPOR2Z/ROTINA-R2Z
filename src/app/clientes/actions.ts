@@ -64,6 +64,34 @@ export async function excluirCliente(clientId: string) {
   redirect("/clientes");
 }
 
+/** Sobe a foto pro bucket `client-avatars` (publico, mesma
+ * transparencia do resto do app) e grava a URL publica em
+ * `clients.avatar_url`. Nome do arquivo leva timestamp pra nao colidir
+ * com upload anterior e pra invalidar cache de CDN sozinho. */
+export async function enviarFotoCliente(clientId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const arquivo = formData.get("foto");
+  if (!(arquivo instanceof File) || arquivo.size === 0) return;
+
+  const extensao = arquivo.name.split(".").pop()?.toLowerCase() || "jpg";
+  const caminho = `${clientId}/${Date.now()}.${extensao}`;
+
+  const { error: erroUpload } = await supabase.storage
+    .from("client-avatars")
+    .upload(caminho, arquivo, { upsert: true });
+  if (erroUpload) return;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("client-avatars").getPublicUrl(caminho);
+
+  await supabase.from("clients").update({ avatar_url: publicUrl }).eq("id", clientId);
+
+  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath("/clientes");
+}
+
 /** Salva todas as propriedades do cliente de uma vez -- um campo por
  * definição aplicável ao tipo dele. Valor normalizado pra `null` remove
  * a linha em vez de gravar um valor vazio à toa. */

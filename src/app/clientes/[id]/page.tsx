@@ -8,10 +8,16 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getClienteComPropriedades } from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
-import { atualizarCliente, arquivarCliente, reabrirCliente, excluirCliente } from "../actions";
+import {
+  atualizarCliente,
+  arquivarCliente,
+  reabrirCliente,
+  excluirCliente,
+  enviarFotoCliente,
+} from "../actions";
 
 function iniciais(nome: string) {
   return nome.trim().slice(0, 2).toUpperCase();
@@ -42,15 +48,28 @@ export default async function ClientePage({
           </Link>
 
           <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback>{iniciais(cliente.nome)}</AvatarFallback>
+            <div className="flex items-center gap-4">
+              <Avatar className="h-20 w-20">
+                {cliente.avatar_url && <AvatarImage src={cliente.avatar_url} alt={cliente.nome} />}
+                <AvatarFallback className="text-xl">{iniciais(cliente.nome)}</AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">{cliente.nome}</h1>
                 {cliente.tipo_cliente && (
                   <p className="text-sm text-muted-foreground">{cliente.tipo_cliente}</p>
                 )}
+                <form action={enviarFotoCliente.bind(null, cliente.id)} className="mt-2 flex items-center gap-2">
+                  <input
+                    name="foto"
+                    type="file"
+                    accept="image/*"
+                    required
+                    className="text-xs text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+                  />
+                  <SubmitButton size="sm" variant="outline" pendingText="Enviando…">
+                    {cliente.avatar_url ? "Trocar foto" : "Adicionar foto"}
+                  </SubmitButton>
+                </form>
               </div>
             </div>
 

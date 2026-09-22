@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/states/empty-state";
 import { buttonVariants } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/server";
 
 function iniciais(nome: string) {
@@ -13,7 +13,7 @@ export default async function ClientesPage() {
   const supabase = await createClient();
   const { data: clientes } = await supabase
     .from("clients")
-    .select("id, nome, tipo_cliente")
+    .select("id, nome, tipo_cliente, avatar_url")
     .eq("arquivado", false)
     .order("nome");
 
@@ -50,8 +50,9 @@ export default async function ClientesPage() {
                 href={`/clientes/${c.id}`}
                 className="flex flex-col items-center gap-2 rounded-lg border bg-card p-4 text-center transition-colors hover:bg-muted/50"
               >
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback>{iniciais(c.nome)}</AvatarFallback>
+                <Avatar className="h-16 w-16">
+                  {c.avatar_url && <AvatarImage src={c.avatar_url} alt={c.nome} />}
+                  <AvatarFallback className="text-base">{iniciais(c.nome)}</AvatarFallback>
                 </Avatar>
                 <p className="w-full truncate text-sm font-medium" title={c.nome}>
                   {c.nome}
