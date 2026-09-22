@@ -122,6 +122,40 @@ export async function criarTarefa(formData: FormData) {
   redirect(`/rotinas/${data.id}`);
 }
 
+/** Criação rápida direto do board do cliente (estilo Notion: só
+ * título, o resto fica no padrão). A tarefa completa -- área,
+ * responsável, prioridade, prazo, recorrência -- continua em "Nova
+ * tarefa" (/rotinas/nova). Retorna a linha criada porque quem chama
+ * (o board, client-side) atualiza a UI otimisticamente com ela. */
+export async function criarTarefaRapida(clientId: string, status: string, tituloBruto: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const titulo = tituloBruto.trim();
+  if (!titulo) return null;
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      titulo,
+      status,
+      client_id: clientId,
+      responsavel_id: user.id,
+      prioridade: "media",
+      criado_por: user.id,
+    })
+    .select("id, titulo, status, prazo, horario, cor")
+    .single();
+
+  if (error || !data) return null;
+
+  revalidatePath(`/clientes/${clientId}`);
+  return data;
+}
+
 export async function atualizarTarefa(taskId: string, formData: FormData) {
   const supabase = await createClient();
 

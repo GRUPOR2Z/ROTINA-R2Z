@@ -149,14 +149,7 @@ export default async function ClientePage({
                   Nova tarefa
                 </Link>
               </div>
-              {!tarefas || tarefas.length === 0 ? (
-                <EmptyState
-                  title="Nenhuma tarefa deste cliente ainda"
-                  description="Crie a primeira tarefa pra começar a acompanhar a operação por aqui."
-                />
-              ) : (
-                <ClientTasksBoard tarefas={tarefas} />
-              )}
+              <ClientTasksBoard clientId={cliente.id} tarefas={tarefas ?? []} />
             </div>
           }
           processos={
