@@ -34,10 +34,10 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <NavLinks />
         </div>
 
-        <div className="flex flex-col gap-2 border-t pt-4">
+        <div className="flex flex-col gap-2">
           <SettingsLink />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 border-t pt-4">
             <Avatar className="h-8 w-8">
               <AvatarFallback>{iniciais(profile?.nome, profile?.email)}</AvatarFallback>
             </Avatar>
