@@ -177,3 +177,34 @@ export async function excluirEventoCalendario(eventId: string, clientId: string)
   await supabase.from("calendar_events").delete().eq("id", eventId);
   revalidatePath(`/clientes/${clientId}`);
 }
+
+/** Vincula um processo já existente da biblioteca central -- não cria
+ * nada novo, só a relação. `ignoreDuplicates` evita erro se o mesmo
+ * processo já estiver vinculado (ex: duplo clique). */
+export async function vincularProcesso(clientId: string, formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const processId = String(formData.get("process_id") ?? "");
+  if (!processId) return;
+
+  await supabase
+    .from("process_clients")
+    .upsert(
+      { process_id: processId, client_id: clientId, vinculado_por: user.id },
+      { onConflict: "process_id,client_id", ignoreDuplicates: true },
+    );
+
+  revalidatePath(`/clientes/${clientId}`);
+}
+
+/** Remove só a relação -- o processo continua existindo na biblioteca
+ * central e vinculado a outros clientes que o tenham. */
+export async function desvincularProcesso(vinculoId: string, clientId: string) {
+  const supabase = await createClient();
+  await supabase.from("process_clients").delete().eq("id", vinculoId);
+  revalidatePath(`/clientes/${clientId}`);
+}

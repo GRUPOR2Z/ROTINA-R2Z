@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { EmptyState } from "@/components/states/empty-state";
 import { ClientTabs } from "@/components/clientes/tabs";
 import { ClientPropertiesPanel } from "@/components/clientes/properties-panel";
 import { ClientNameEditor } from "@/components/clientes/client-name-editor";
 import { ClientTasksBoard } from "@/components/clientes/tasks-board";
 import { ClientCalendar } from "@/components/clientes/calendar";
+import { ClientProcessesTab } from "@/components/clientes/processes-tab";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/server";
-import { getClienteComPropriedades } from "@/lib/clients-data";
+import {
+  getClienteComPropriedades,
+  getProcessosDoCliente,
+  getProcessosParaVincular,
+} from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
 import { getCurrentProfile } from "@/lib/current-profile";
 import { arquivarCliente, reabrirCliente, excluirCliente, enviarFotoCliente } from "../actions";
@@ -38,11 +42,15 @@ export default async function ClientePage({
   const perfil = await getCurrentProfile();
 
   const supabase = await createClient();
-  const { data: tarefas } = await supabase
-    .from("tasks")
-    .select("id, titulo, status, prazo, horario, cor")
-    .eq("client_id", id)
-    .order("prazo", { ascending: true, nullsFirst: false });
+  const [{ data: tarefas }, processosVinculados, processosDisponiveis] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, titulo, status, prazo, horario, cor")
+      .eq("client_id", id)
+      .order("prazo", { ascending: true, nullsFirst: false }),
+    getProcessosDoCliente(id),
+    getProcessosParaVincular(id),
+  ]);
 
   return (
     <AppShell>
@@ -117,9 +125,10 @@ export default async function ClientePage({
             </div>
           }
           processos={
-            <EmptyState
-              title="Processos vinculados"
-              description="Chega na Fase C: processos da biblioteca central vinculados a este cliente, sem duplicar conteúdo."
+            <ClientProcessesTab
+              clientId={cliente.id}
+              vinculados={processosVinculados}
+              disponiveis={processosDisponiveis}
             />
           }
         />

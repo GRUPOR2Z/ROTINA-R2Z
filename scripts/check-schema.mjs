@@ -42,6 +42,7 @@ const tabelas = [
   "client_property_definitions",
   "client_property_values",
   "calendar_events",
+  "process_clients",
 ];
 
 for (const tabela of tabelas) {

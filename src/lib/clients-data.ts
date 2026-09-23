@@ -103,3 +103,44 @@ export async function getBadgesPorCliente() {
 
   return badgesPorCliente;
 }
+
+type ProcessoVinculado = {
+  id: string;
+  processes: {
+    id: string;
+    titulo: string;
+    status: string;
+    areas: { nome: string } | null;
+    profiles: { nome: string | null; email: string | null } | null;
+  } | null;
+};
+
+/** Processos vinculados a este cliente -- lê pela tabela de relação,
+ * então nunca mostra processo exclusivo de outro cliente. */
+export async function getProcessosDoCliente(clientId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("process_clients")
+    .select(
+      "id, processes(id, titulo, status, areas(nome), profiles!processes_responsavel_id_fkey(nome, email))",
+    )
+    .eq("client_id", clientId)
+    .order("vinculado_em", { ascending: false })
+    .returns<ProcessoVinculado[]>();
+
+  return data ?? [];
+}
+
+/** Processos ainda não vinculados a este cliente (e não arquivados) --
+ * alimenta o select de "vincular processo existente". */
+export async function getProcessosParaVincular(clientId: string) {
+  const supabase = await createClient();
+
+  const [{ data: todos }, { data: vinculados }] = await Promise.all([
+    supabase.from("processes").select("id, titulo").neq("status", "arquivado").order("titulo"),
+    supabase.from("process_clients").select("process_id").eq("client_id", clientId),
+  ]);
+
+  const idsVinculados = new Set((vinculados ?? []).map((v) => v.process_id));
+  return (todos ?? []).filter((p) => !idsVinculados.has(p.id));
+}
