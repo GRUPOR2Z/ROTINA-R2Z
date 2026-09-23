@@ -5,21 +5,9 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { PropertyTypeAndOptionsFields } from "@/components/clientes/property-type-fields";
 import { criarDefinicaoInline } from "@/app/clientes/propriedades/actions";
-
-const TIPOS_CAMPO = [
-  { value: "texto", label: "Texto" },
-  { value: "numero", label: "Número" },
-  { value: "moeda", label: "Moeda (R$)" },
-  { value: "data", label: "Data" },
-  { value: "booleano", label: "Sim/Não" },
-  { value: "select", label: "Seleção única" },
-  { value: "multi_select", label: "Seleção múltipla" },
-  { value: "usuario", label: "Pessoa da equipe" },
-  { value: "url", label: "Link" },
-] as const;
 
 /** "+ Adicionar propriedade" direto na página do cliente -- cria uma
  * propriedade global (aplica a todos os tipos de cliente). Pra
@@ -52,25 +40,12 @@ export function AddPropertyInline({ clientId }: { clientId: string }) {
       className="flex flex-col gap-2 rounded-lg border p-3"
     >
       <div className="grid grid-cols-2 gap-2">
-        <Input name="rotulo" placeholder="Nome da propriedade" required autoFocus className="h-8 text-sm" />
-        <Select name="tipo_campo" defaultValue="texto">
-          <SelectTrigger className="h-8 w-full text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TIPOS_CAMPO.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="inline-rotulo">Nome</Label>
+          <Input id="inline-rotulo" name="rotulo" placeholder="ex: Situação" required autoFocus className="h-8 text-sm" />
+        </div>
+        <PropertyTypeAndOptionsFields idPrefix="inline-" />
       </div>
-      <Textarea
-        name="opcoes"
-        placeholder={"valor:rótulo, uma por linha -- só p/ seleção única ou múltipla"}
-        className="h-16 text-xs"
-      />
       <div className="flex gap-2">
         <SubmitButton size="sm" pendingText="Criando…">
           Adicionar
