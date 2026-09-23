@@ -4,23 +4,17 @@ import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/states/empty-state";
 import { ClientTabs } from "@/components/clientes/tabs";
 import { ClientPropertiesPanel } from "@/components/clientes/properties-panel";
+import { ClientNameEditor } from "@/components/clientes/client-name-editor";
 import { ClientTasksBoard } from "@/components/clientes/tasks-board";
 import { ClientCalendar } from "@/components/clientes/calendar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/server";
 import { getClienteComPropriedades } from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
-import {
-  atualizarCliente,
-  arquivarCliente,
-  reabrirCliente,
-  excluirCliente,
-  enviarFotoCliente,
-} from "../actions";
+import { getCurrentProfile } from "@/lib/current-profile";
+import { arquivarCliente, reabrirCliente, excluirCliente, enviarFotoCliente } from "../actions";
 
 function iniciais(nome: string) {
   return nome.trim().slice(0, 2).toUpperCase();
@@ -41,6 +35,7 @@ export default async function ClientePage({
 
   const { cliente, definicoes, valorPorDefinicao } = dados;
   const { membros } = await getAreasEMembros();
+  const perfil = await getCurrentProfile();
 
   const supabase = await createClient();
   const { data: tarefas } = await supabase
@@ -64,10 +59,7 @@ export default async function ClientePage({
                 <AvatarFallback className="text-xl">{iniciais(cliente.nome)}</AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight">{cliente.nome}</h1>
-                {cliente.tipo_cliente && (
-                  <p className="text-sm text-muted-foreground">{cliente.tipo_cliente}</p>
-                )}
+                <ClientNameEditor clientId={cliente.id} nomeInicial={cliente.nome} />
                 <form action={enviarFotoCliente.bind(null, cliente.id)} className="mt-2 flex items-center gap-2">
                   <input
                     name="foto"
@@ -99,43 +91,15 @@ export default async function ClientePage({
           </div>
         </div>
 
-        <section className="flex flex-col gap-4 rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground">Sobre o cliente</h2>
-            <Link
-              href="/clientes/propriedades"
-              className="text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              Gerenciar propriedades
-            </Link>
-          </div>
-
-          <form action={atualizarCliente.bind(null, cliente.id)} className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="nome">Nome</Label>
-              <Input id="nome" name="nome" defaultValue={cliente.nome} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="tipo_cliente">Tipo de cliente</Label>
-              <Input
-                id="tipo_cliente"
-                name="tipo_cliente"
-                defaultValue={cliente.tipo_cliente ?? ""}
-                placeholder="ex: clínica, e-commerce"
-              />
-            </div>
-            <div className="col-span-2">
-              <SubmitButton size="sm" pendingText="Salvando…">
-                Salvar dados básicos
-              </SubmitButton>
-            </div>
-          </form>
-
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xs font-medium text-muted-foreground">Propriedades</h2>
           <ClientPropertiesPanel
             clientId={cliente.id}
+            tipoCliente={cliente.tipo_cliente}
             definicoes={definicoes}
             valorPorDefinicao={valorPorDefinicao}
             membros={membros}
+            podeAdministrar={perfil?.isAdmin ?? false}
           />
         </section>
 

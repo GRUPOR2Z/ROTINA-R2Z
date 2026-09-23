@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { normalizarValorFormulario, type TipoCampoPropriedade } from "@/lib/client-properties";
-import { getDefinicoesDoTipo } from "@/lib/clients-data";
 
 export async function criarCliente(formData: FormData) {
   const supabase = await createClient();
@@ -30,14 +29,27 @@ export async function criarCliente(formData: FormData) {
   redirect(`/clientes/${data.id}`);
 }
 
-export async function atualizarCliente(clientId: string, formData: FormData) {
+/** Nome edita direto no título (H1) da página do cliente, sem form
+ * separado -- clica, digita, sai do campo e salva. */
+export async function atualizarNomeCliente(clientId: string, nome: string) {
+  const nomeLimpo = nome.trim();
+  if (!nomeLimpo) return;
+
   const supabase = await createClient();
-  const nome = String(formData.get("nome") ?? "").trim();
-  if (!nome) return;
+  await supabase.from("clients").update({ nome: nomeLimpo }).eq("id", clientId);
 
-  const tipoCliente = String(formData.get("tipo_cliente") ?? "").trim() || null;
+  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath("/clientes");
+}
 
-  await supabase.from("clients").update({ nome, tipo_cliente: tipoCliente }).eq("id", clientId);
+/** Mesma ideia pro "Tipo de cliente" -- vira mais uma linha da lista
+ * de propriedades, mesmo sendo uma coluna fixa (não genérica). */
+export async function atualizarTipoCliente(clientId: string, tipoCliente: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("clients")
+    .update({ tipo_cliente: tipoCliente.trim() || null })
+    .eq("id", clientId);
 
   revalidatePath(`/clientes/${clientId}`);
   revalidatePath("/clientes");
@@ -92,47 +104,35 @@ export async function enviarFotoCliente(clientId: string, formData: FormData) {
   revalidatePath("/clientes");
 }
 
-/** Salva todas as propriedades do cliente de uma vez -- um campo por
- * definição aplicável ao tipo dele. Valor normalizado pra `null` remove
- * a linha em vez de gravar um valor vazio à toa. */
-export async function salvarPropriedades(clientId: string, formData: FormData) {
+/** Salva uma propriedade por vez -- cada campo da lista tipo Notion
+ * chama isso sozinho ao mudar (blur, seleção, checkbox), sem botão de
+ * salvar geral. `bruto` já vem no formato que `normalizarValorFormulario`
+ * espera (string, lista de strings pro multi_select, ou null). */
+export async function salvarPropriedadeUnica(
+  clientId: string,
+  definitionId: string,
+  tipoCampo: TipoCampoPropriedade,
+  bruto: string | string[] | null,
+) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: cliente } = await supabase
-    .from("clients")
-    .select("tipo_cliente")
-    .eq("id", clientId)
-    .maybeSingle();
-  if (!cliente) return;
+  const valor = normalizarValorFormulario(tipoCampo, bruto);
 
-  const definicoes = await getDefinicoesDoTipo(cliente.tipo_cliente);
-
-  for (const definicao of definicoes) {
-    const nomeCampo = `prop_${definicao.id}`;
-    const bruto =
-      definicao.tipo_campo === "multi_select"
-        ? formData.getAll(nomeCampo).map(String)
-        : (formData.get(nomeCampo) as string | null);
-
-    const valor = normalizarValorFormulario(definicao.tipo_campo as TipoCampoPropriedade, bruto);
-
-    if (valor === null) {
-      await supabase
-        .from("client_property_values")
-        .delete()
-        .eq("client_id", clientId)
-        .eq("property_definition_id", definicao.id);
-      continue;
-    }
-
+  if (valor === null) {
+    await supabase
+      .from("client_property_values")
+      .delete()
+      .eq("client_id", clientId)
+      .eq("property_definition_id", definitionId);
+  } else {
     await supabase
       .from("client_property_values")
       .upsert(
-        { client_id: clientId, property_definition_id: definicao.id, valor, atualizado_por: user.id },
+        { client_id: clientId, property_definition_id: definitionId, valor, atualizado_por: user.id },
         { onConflict: "client_id,property_definition_id" },
       );
   }

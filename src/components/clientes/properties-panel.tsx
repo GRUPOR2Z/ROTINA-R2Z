@@ -1,55 +1,54 @@
 import Link from "next/link";
-import { Label } from "@/components/ui/label";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { PropertyFieldInput } from "@/components/clientes/property-field";
+import { PropertyRow } from "@/components/clientes/property-row";
+import { ClientTypeRow } from "@/components/clientes/client-type-row";
+import { AddPropertyInline } from "@/components/clientes/add-property-inline";
 import type { DefinicaoPropriedade } from "@/lib/client-properties";
-import { salvarPropriedades } from "@/app/clientes/actions";
 
 type Membro = { id: string; nome: string | null; email: string | null };
 
+/** Lista de propriedades no estilo Notion: ícone + rótulo à esquerda,
+ * valor editável (auto-save) à direita, sem card com borda nem botão
+ * de "salvar tudo" -- cada linha se vira sozinha. */
 export function ClientPropertiesPanel({
   clientId,
+  tipoCliente,
   definicoes,
   valorPorDefinicao,
   membros,
+  podeAdministrar,
 }: {
   clientId: string;
+  tipoCliente: string | null;
   definicoes: DefinicaoPropriedade[];
   valorPorDefinicao: Map<string, unknown>;
   membros: Membro[];
+  podeAdministrar: boolean;
 }) {
-  if (definicoes.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Nenhuma propriedade configurada ainda.{" "}
-        <Link href="/clientes/propriedades" className="underline hover:text-foreground">
-          Gerenciar propriedades
-        </Link>
-        .
-      </p>
-    );
-  }
-
   return (
-    <form action={salvarPropriedades.bind(null, clientId)} className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4">
-        {definicoes.map((definicao) => (
-          <div key={definicao.id} className="flex flex-col gap-1.5">
-            <Label htmlFor={`prop_${definicao.id}`}>
-              {definicao.rotulo}
-              {definicao.obrigatorio && <span className="text-destructive"> *</span>}
-            </Label>
-            <PropertyFieldInput
-              definicao={definicao}
-              valor={valorPorDefinicao.get(definicao.id)}
-              membros={membros}
-            />
-          </div>
-        ))}
-      </div>
-      <SubmitButton size="sm" className="self-start" pendingText="Salvando…">
-        Salvar propriedades
-      </SubmitButton>
-    </form>
+    <div className="flex flex-col">
+      <ClientTypeRow clientId={clientId} tipoInicial={tipoCliente} />
+
+      {definicoes.map((definicao) => (
+        <PropertyRow
+          key={definicao.id}
+          clientId={clientId}
+          definicao={definicao}
+          valorInicial={valorPorDefinicao.get(definicao.id)}
+          membros={membros}
+        />
+      ))}
+
+      {podeAdministrar && (
+        <div className="flex items-center justify-between pt-1">
+          <AddPropertyInline clientId={clientId} />
+          <Link
+            href="/clientes/propriedades"
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Gerenciar propriedades
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }

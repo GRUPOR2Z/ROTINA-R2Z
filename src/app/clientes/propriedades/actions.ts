@@ -22,7 +22,10 @@ function lerOpcoes(formData: FormData) {
   return opcoes.length > 0 ? { opcoes } : null;
 }
 
-export async function criarDefinicao(formData: FormData) {
+/** Insere a definição a partir do form -- compartilhado entre a tela
+ * de admin (`/clientes/propriedades`) e o "+ Adicionar propriedade"
+ * direto na página do cliente. Quem chama decide o que revalidar. */
+async function inserirDefinicao(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -55,8 +58,20 @@ export async function criarDefinicao(formData: FormData) {
     ordem: (ultimo?.ordem ?? -1) + 1,
     criado_por: user.id,
   });
+}
 
+export async function criarDefinicao(formData: FormData) {
+  await inserirDefinicao(formData);
   revalidatePath("/clientes/propriedades");
+}
+
+/** Mesma criação, chamada do "+ Adicionar propriedade" da própria
+ * página do cliente -- revalida os dois lugares onde o resultado
+ * aparece. */
+export async function criarDefinicaoInline(clientId: string, formData: FormData) {
+  await inserirDefinicao(formData);
+  revalidatePath("/clientes/propriedades");
+  revalidatePath(`/clientes/${clientId}`);
 }
 
 export async function arquivarDefinicao(definicaoId: string) {
