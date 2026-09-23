@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { NavLinks } from "@/components/layout/nav-links";
+import { NavLinks, SettingsLink } from "@/components/layout/nav-links";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
@@ -34,23 +34,23 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <NavLinks />
         </div>
 
-        <div className="flex items-center gap-3 border-t pt-4">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>{iniciais(profile?.nome, profile?.email)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {profile?.nome || user?.email}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {profile?.cargo || "—"}
-            </p>
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <SettingsLink />
+
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{iniciais(profile?.nome, profile?.email)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{profile?.nome || user?.email}</p>
+              <p className="truncate text-xs text-muted-foreground">{profile?.cargo || "—"}</p>
+            </div>
+            <form action="/logout" method="post">
+              <Button type="submit" variant="ghost" size="sm">
+                Sair
+              </Button>
+            </form>
           </div>
-          <form action="/logout" method="post">
-            <Button type="submit" variant="ghost" size="sm">
-              Sair
-            </Button>
-          </form>
         </div>
       </aside>
 
