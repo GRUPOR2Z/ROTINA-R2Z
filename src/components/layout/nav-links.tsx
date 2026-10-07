@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/clientes", label: "Clientes" },
   { href: "/rotinas", label: "Rotinas" },
+  { href: "/projetos", label: "Projetos" },
   { href: "/processos", label: "Processos" },
   { href: "/kpis", label: "KPIs" },
   { href: "/okrs", label: "OKRs" },

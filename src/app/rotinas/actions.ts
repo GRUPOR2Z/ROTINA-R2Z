@@ -154,7 +154,9 @@ export async function criarTarefa(formData: FormData) {
  * responsável, prioridade, prazo, recorrência -- continua em "Nova
  * tarefa" (/rotinas/nova). Retorna a linha criada porque quem chama
  * (o board, client-side) atualiza a UI otimisticamente com ela. */
-export async function criarTarefaRapida(clientId: string, status: string, tituloBruto: string) {
+export type VinculoQuadro = { clientId?: string; projectId?: string };
+
+export async function criarTarefaRapida(vinculo: VinculoQuadro, status: string, tituloBruto: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -169,9 +171,12 @@ export async function criarTarefaRapida(clientId: string, status: string, titulo
     .insert({
       titulo,
       status,
-      client_id: clientId,
+      client_id: vinculo.clientId ?? null,
+      project_id: vinculo.projectId ?? null,
       responsavel_id: user.id,
       prioridade: "media",
+      // criada direto no quadro, so com titulo -- prazo e' definido depois
+      justificativa_sem_prazo: "Criada pelo quadro; definir prazo",
       criado_por: user.id,
     })
     .select("id, titulo, status, prazo, horario, cor")
@@ -179,7 +184,8 @@ export async function criarTarefaRapida(clientId: string, status: string, titulo
 
   if (error || !data) return null;
 
-  revalidatePath(`/clientes/${clientId}`);
+  if (vinculo.clientId) revalidatePath(`/clientes/${vinculo.clientId}`);
+  if (vinculo.projectId) revalidatePath(`/projetos/${vinculo.projectId}`);
   return data;
 }
 

@@ -46,6 +46,10 @@ const tabelas = [
   "audit_logs",
   "documents",
   "process_suggestions",
+  "projects",
+  "project_members",
+  "project_deliverables",
+  "project_processes",
 ];
 
 for (const tabela of tabelas) {

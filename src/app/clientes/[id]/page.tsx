@@ -121,7 +121,7 @@ export default async function ClientePage({
                   Nova tarefa
                 </Link>
               </div>
-              <ClientTasksBoard clientId={cliente.id} tarefas={tarefas ?? []} />
+              <ClientTasksBoard vinculo={{ clientId: cliente.id }} tarefas={tarefas ?? []} />
             </div>
           }
           processos={

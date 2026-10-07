@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { atualizarStatus, criarTarefaRapida } from "@/app/rotinas/actions";
+import { atualizarStatus, criarTarefaRapida, type VinculoQuadro } from "@/app/rotinas/actions";
 import { infoCor } from "@/lib/task-colors";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +45,9 @@ function estaAtrasada(prazo: string | null, status: string) {
   return new Date(prazo) < new Date(new Date().toDateString());
 }
 
-export function ClientTasksBoard({ clientId, tarefas: tarefasIniciais }: { clientId: string; tarefas: Tarefa[] }) {
+/** Kanban de tarefas de um cliente ou de um projeto (`vinculo` decide
+ * a qual dos dois a tarefa criada inline fica ligada). */
+export function ClientTasksBoard({ vinculo, tarefas: tarefasIniciais }: { vinculo: VinculoQuadro; tarefas: Tarefa[] }) {
   const router = useRouter();
   const [tarefasAnteriores, setTarefasAnteriores] = useState(tarefasIniciais);
   const [tarefas, setTarefas] = useState(tarefasIniciais);
@@ -78,7 +80,7 @@ export function ClientTasksBoard({ clientId, tarefas: tarefasIniciais }: { clien
       { id: idTemporario, titulo, status: coluna, prazo: null, horario: null, cor: null },
     ]);
     startTransition(async () => {
-      const criada = await criarTarefaRapida(clientId, coluna, titulo);
+      const criada = await criarTarefaRapida(vinculo, coluna, titulo);
       setTarefas((atual) =>
         criada
           ? atual.map((t) => (t.id === idTemporario ? criada : t))
