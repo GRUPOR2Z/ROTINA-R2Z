@@ -32,3 +32,9 @@ export async function getVinculosTarefa() {
     projetos: (projetos ?? []).map((p) => ({ value: p.id, label: p.nome })),
   };
 }
+
+export async function getReunioesRecentes() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("meetings").select("id, titulo, data").order("data", { ascending: false }).limit(50);
+  return (data ?? []).map((r) => ({ value: r.id, label: `${r.titulo} (${r.data.split("-").reverse().join("/")})` }));
+}

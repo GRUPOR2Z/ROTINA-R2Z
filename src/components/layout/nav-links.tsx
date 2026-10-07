@@ -4,16 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const ITEMS = [
+type Item = { href: string; label: string; tambem?: string[] };
+
+const ITEMS: Item[] = [
   { href: "/", label: "Dashboard" },
   { href: "/clientes", label: "Clientes" },
   { href: "/rotinas", label: "Rotinas" },
   { href: "/projetos", label: "Projetos" },
+  { href: "/decisoes", label: "Decisões e reuniões", tambem: ["/reunioes"] },
   { href: "/processos", label: "Processos" },
   { href: "/kpis", label: "KPIs" },
   { href: "/okrs", label: "OKRs" },
   { href: "/equipe", label: "Equipe" },
-] as const;
+];
 
 function navLinkClass(active: boolean) {
   return cn(
@@ -28,7 +31,10 @@ export function NavLinks() {
   return (
     <nav className="flex flex-col gap-1">
       {ITEMS.map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        const active =
+          item.href === "/"
+            ? pathname === "/"
+            : [item.href, ...(item.tambem ?? [])].some((h) => pathname.startsWith(h));
         return (
           <Link key={item.href} href={item.href} className={navLinkClass(active)}>
             {item.label}

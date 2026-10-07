@@ -50,6 +50,11 @@ const tabelas = [
   "project_members",
   "project_deliverables",
   "project_processes",
+  "meetings",
+  "meeting_participants",
+  "meeting_action_items",
+  "decisions",
+  "decision_participants",
 ];
 
 for (const tabela of tabelas) {
