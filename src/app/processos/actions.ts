@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { exportarProcessoParaGoogleDocs } from "@/lib/google-docs";
 import { extrairTextoDeArquivo } from "@/lib/extract-text";
+import { booleano, numeroOuNulo, texto, textoOuNulo } from "@/lib/form";
+import { dateKey } from "@/lib/calendar";
 
 const CAMPOS_CONTEUDO = [
   "titulo",
@@ -17,6 +19,11 @@ const CAMPOS_CONTEUDO = [
   "passo_a_passo",
   "saidas",
   "criterios_conclusao",
+  "problemas_comuns",
+  "links",
+  "substituto_id",
+  "frequencia_revisao_dias",
+  "critico",
 ] as const;
 
 function lerConteudo(formData: FormData) {
@@ -31,6 +38,11 @@ function lerConteudo(formData: FormData) {
     passo_a_passo: String(formData.get("passo_a_passo") ?? "").trim() || null,
     saidas: String(formData.get("saidas") ?? "").trim() || null,
     criterios_conclusao: String(formData.get("criterios_conclusao") ?? "").trim() || null,
+    problemas_comuns: textoOuNulo(formData, "problemas_comuns"),
+    links: textoOuNulo(formData, "links"),
+    substituto_id: textoOuNulo(formData, "substituto_id"),
+    frequencia_revisao_dias: numeroOuNulo(formData, "frequencia_revisao_dias"),
+    critico: booleano(formData, "critico"),
   };
 }
 
@@ -176,7 +188,7 @@ export async function publicarProcesso(processId: string) {
 
   await supabase
     .from("processes")
-    .update({ status: "publicado", versao_publicada_id: versao.id })
+    .update({ status: "publicado", versao_publicada_id: versao.id, ultima_revisao_em: dateKey(new Date()) })
     .eq("id", processId);
 
   revalidatePath(`/processos/${processId}`);
@@ -230,4 +242,52 @@ export async function excluirProcesso(processId: string) {
   await supabase.from("processes").delete().eq("id", processId);
   revalidatePath("/processos");
   redirect("/processos");
+}
+
+/** Revisao periodica sem mudanca de conteudo: so registra a data. */
+export async function marcarComoRevisado(processId: string) {
+  const supabase = await createClient();
+  await supabase.from("processes").update({ ultima_revisao_em: dateKey(new Date()) }).eq("id", processId);
+  revalidatePath(`/processos/${processId}`);
+  revalidatePath("/processos");
+}
+
+/** Sugestao de alteracao: fica registrada a parte e NUNCA altera a
+ * versao publicada -- quem cuida do processo decide se incorpora. */
+export async function sugerirAlteracao(processId: string, formData: FormData) {
+  const textoSugestao = texto(formData, "texto");
+  if (!textoSugestao) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("process_suggestions").insert({ process_id: processId, autor_id: user.id, texto: textoSugestao });
+  revalidatePath(`/processos/${processId}`);
+}
+
+export async function responderSugestao(
+  processId: string,
+  sugestaoId: string,
+  status: "aceita" | "recusada",
+  formData: FormData,
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("process_suggestions")
+    .update({
+      status,
+      resposta: textoOuNulo(formData, "resposta"),
+      respondido_por: user.id,
+      respondido_em: new Date().toISOString(),
+    })
+    .eq("id", sugestaoId);
+  revalidatePath(`/processos/${processId}`);
 }

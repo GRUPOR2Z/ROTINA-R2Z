@@ -12,18 +12,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ColorSelect } from "@/components/rotinas/color-select";
-import { getAreasEMembros } from "@/lib/lookups";
+import { SelectField } from "@/components/forms/select-field";
+import { ErroBanner } from "@/components/layout/page-header";
+import { getAreasEMembros, getVinculosTarefa } from "@/lib/lookups";
 import { getClientesAtivos } from "@/lib/clients-data";
 import { criarTarefa } from "../actions";
 
 export default async function NovaTarefaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cliente?: string }>;
+  searchParams: Promise<{ cliente?: string; projeto?: string; processo?: string; kpi?: string; okr?: string; erro?: string }>;
 }) {
-  const { cliente } = await searchParams;
+  const { cliente, projeto, processo, kpi, okr, erro } = await searchParams;
   const { areas, membros } = await getAreasEMembros();
   const clientes = await getClientesAtivos();
+  const vinculos = await getVinculosTarefa();
 
   return (
     <AppShell>
@@ -34,6 +37,8 @@ export default async function NovaTarefaPage({
           </Link>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">Nova tarefa</h1>
         </div>
+
+        <ErroBanner erro={erro} />
 
         <form action={criarTarefa} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -123,6 +128,20 @@ export default async function NovaTarefaPage({
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label htmlFor="justificativa_sem_prazo">Justificativa para não ter prazo</Label>
+              <Input
+                id="justificativa_sem_prazo"
+                name="justificativa_sem_prazo"
+                placeholder="Só se o prazo ficar em branco — ex: contínua, aguardando cliente"
+              />
+            </div>
+
+            <SelectField name="project_id" label="Projeto" options={vinculos.projetos} defaultValue={projeto} emptyLabel="Nenhum" placeholder="Nenhum" />
+            <SelectField name="process_id" label="Processo" options={vinculos.processos} defaultValue={processo} emptyLabel="Nenhum" placeholder="Nenhum" />
+            <SelectField name="kpi_id" label="KPI" options={vinculos.kpis} defaultValue={kpi} emptyLabel="Nenhum" placeholder="Nenhum" />
+            <SelectField name="okr_id" label="OKR / iniciativa" options={vinculos.okrs} defaultValue={okr} emptyLabel="Nenhum" placeholder="Nenhum" />
 
             <div className="col-span-2 flex flex-col gap-2">
               <Label htmlFor="frequencia">Repetir</Label>

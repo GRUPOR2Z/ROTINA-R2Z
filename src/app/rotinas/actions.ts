@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { textoOuNulo } from "@/lib/form";
 import {
   proximaData,
   gerarProximasDatas,
@@ -21,8 +22,25 @@ type DadosTarefaBase = {
   horario: string | null;
   cor: string | null;
   client_id: string | null;
+  project_id: string | null;
+  process_id: string | null;
+  kpi_id: string | null;
+  okr_id: string | null;
   criado_por: string;
 };
+
+/** Vinculos opcionais da tarefa (Doc. 2: "relacionar tarefas a
+ * processos, projetos, KPIs, OKRs e iniciativas"). */
+function lerVinculos(formData: FormData) {
+  return {
+    project_id: textoOuNulo(formData, "project_id"),
+    process_id: textoOuNulo(formData, "process_id"),
+    kpi_id: textoOuNulo(formData, "kpi_id"),
+    okr_id: textoOuNulo(formData, "okr_id"),
+  };
+}
+
+const ERRO_SEM_PRAZO = "Toda tarefa precisa de um prazo ou de uma justificativa para não ter prazo.";
 
 async function criarOcorrencia(
   supabase: SupabaseServerClient,
@@ -62,6 +80,12 @@ export async function criarTarefa(formData: FormData) {
   const clientId = String(formData.get("client_id") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
   const frequencia = String(formData.get("frequencia") ?? "nenhuma") as Frequencia | "nenhuma";
+  const vinculos = lerVinculos(formData);
+  const justificativa = prazo ? null : textoOuNulo(formData, "justificativa_sem_prazo");
+
+  if (!prazo && !justificativa) {
+    redirect(`/rotinas/nova?erro=${encodeURIComponent(ERRO_SEM_PRAZO)}`);
+  }
 
   const { data, error } = await supabase
     .from("tasks")
@@ -75,6 +99,8 @@ export async function criarTarefa(formData: FormData) {
       horario,
       cor,
       client_id: clientId,
+      ...vinculos,
+      justificativa_sem_prazo: justificativa,
       criado_por: user.id,
     })
     .select("id")
@@ -105,6 +131,7 @@ export async function criarTarefa(formData: FormData) {
         horario,
         cor,
         client_id: clientId,
+        ...vinculos,
         criado_por: user.id,
       };
       const proximasDatas = gerarProximasDatas(
@@ -170,6 +197,11 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
   const cor = String(formData.get("cor") ?? "") || null;
   const clientId = String(formData.get("client_id") ?? "") || null;
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
+  const justificativa = prazo ? null : textoOuNulo(formData, "justificativa_sem_prazo");
+
+  if (!prazo && !justificativa) {
+    redirect(`/rotinas/${taskId}?erro=${encodeURIComponent(ERRO_SEM_PRAZO)}`);
+  }
 
   await supabase
     .from("tasks")
@@ -183,6 +215,8 @@ export async function atualizarTarefa(taskId: string, formData: FormData) {
       horario,
       cor,
       client_id: clientId,
+      ...lerVinculos(formData),
+      justificativa_sem_prazo: justificativa,
     })
     .eq("id", taskId);
 
@@ -277,6 +311,10 @@ export async function atualizarStatus(
         horario: tarefaAtual.horario,
         cor: tarefaAtual.cor,
         client_id: tarefaAtual.client_id,
+        project_id: tarefaAtual.project_id,
+        process_id: tarefaAtual.process_id,
+        kpi_id: tarefaAtual.kpi_id,
+        okr_id: tarefaAtual.okr_id,
         criado_por: user?.id ?? tarefaAtual.criado_por,
       });
     }
@@ -343,4 +381,39 @@ export async function adicionarComentario(taskId: string, formData: FormData) {
     .insert({ task_id: taskId, autor_id: user.id, texto });
 
   revalidatePath(`/rotinas/${taskId}`);
+}
+
+/** Subtarefa: tarefa comum com parent_task_id, herda area/cliente/
+ * projeto/prazo da tarefa-mae. Aparece so dentro da mae, nao na lista. */
+export async function criarSubtarefa(parentId: string, formData: FormData) {
+  const titulo = String(formData.get("titulo") ?? "").trim();
+  if (!titulo) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: mae } = await supabase
+    .from("tasks")
+    .select("area_id, client_id, project_id, prazo, responsavel_id")
+    .eq("id", parentId)
+    .maybeSingle();
+  if (!mae) return;
+
+  await supabase.from("tasks").insert({
+    titulo,
+    parent_task_id: parentId,
+    area_id: mae.area_id,
+    client_id: mae.client_id,
+    project_id: mae.project_id,
+    prazo: mae.prazo,
+    justificativa_sem_prazo: mae.prazo ? null : "Segue a tarefa-mãe",
+    responsavel_id: textoOuNulo(formData, "responsavel_id") ?? mae.responsavel_id ?? user.id,
+    prioridade: "media",
+    criado_por: user.id,
+  });
+
+  revalidatePath(`/rotinas/${parentId}`);
 }

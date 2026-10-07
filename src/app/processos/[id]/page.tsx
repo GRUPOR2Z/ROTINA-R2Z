@@ -16,7 +16,17 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
+import { Badge } from "@/components/ui/badge";
+import { Section } from "@/components/layout/page-header";
+import { Attachments } from "@/components/documents/attachments";
+import { History } from "@/components/audit/history";
+import { ProcessExtraFields } from "@/components/processos/extra-fields";
+import { proximaRevisao, revisaoVencida } from "@/lib/processos";
+import { formatarData as formatarDataCurta, nomeDe, rel } from "@/lib/format";
 import {
+  marcarComoRevisado,
+  sugerirAlteracao,
+  responderSugestao,
   atualizarProcesso,
   enviarParaRevisao,
   publicarProcesso,
@@ -64,6 +74,24 @@ export default async function ProcessoPage({
     .eq("process_id", id)
     .order("numero_versao", { ascending: false });
 
+  const [{ data: sugestoes }, { data: tarefasVinculadas }] = await Promise.all([
+    supabase
+      .from("process_suggestions")
+      .select("id, texto, status, resposta, criado_em, autor:profiles!process_suggestions_autor_id_fkey(nome, email)")
+      .eq("process_id", id)
+      .order("criado_em", { ascending: false }),
+    supabase
+      .from("tasks")
+      .select("id, titulo, status, prazo")
+      .eq("process_id", id)
+      .order("prazo", { ascending: true, nullsFirst: false })
+      .limit(20),
+  ]);
+
+  const vencida = revisaoVencida(processo.ultima_revisao_em, processo.frequencia_revisao_dias);
+  const proxima = proximaRevisao(processo.ultima_revisao_em, processo.frequencia_revisao_dias);
+  const substituto = membros.find((m) => m.id === processo.substituto_id);
+
   return (
     <AppShell>
       <div className="flex max-w-2xl flex-col gap-8">
@@ -74,7 +102,17 @@ export default async function ProcessoPage({
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{processo.titulo}</h1>
             <ProcessStatusBadge status={processo.status} />
+            {processo.critico && <Badge variant="outline">Crítico</Badge>}
+            {vencida && <Badge variant="destructive">Revisão vencida</Badge>}
           </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {processo.ultima_revisao_em ? `Revisado em ${formatarDataCurta(processo.ultima_revisao_em, { ano: true })}` : "Nunca revisado"}
+            {proxima && ` · próxima revisão ${formatarDataCurta(proxima, { ano: true })}`}
+            {substituto && ` · substituto: ${nomeDe(substituto)}`}
+            {processo.critico && !processo.substituto_id && (
+              <span className="text-destructive"> · processo crítico sem substituto</span>
+            )}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -127,6 +165,13 @@ export default async function ProcessoPage({
           >
             Baixar PDF
           </a>
+          {processo.status === "publicado" && (
+            <form action={marcarComoRevisado.bind(null, processo.id)}>
+              <Button type="submit" size="sm" variant="ghost">
+                Marcar como revisado
+              </Button>
+            </form>
+          )}
         </div>
 
         <section className="flex flex-col gap-4 rounded-lg border p-4">
@@ -223,6 +268,8 @@ export default async function ProcessoPage({
               />
             </div>
 
+            <ProcessExtraFields membros={membros} valores={processo} />
+
             <Button type="submit" size="sm" className="self-start">
               Salvar alterações
             </Button>
@@ -274,6 +321,71 @@ export default async function ProcessoPage({
             </div>
           )}
         </section>
+
+        <Section title="Sugestões de alteração">
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Sugestões não mudam a versão publicada — quem cuida do processo decide se incorpora.
+          </p>
+          {(sugestoes ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhuma sugestão.</p>}
+          {(sugestoes ?? []).map((s) => (
+            <div key={s.id} className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{nomeDe(rel(s.autor))}</span>
+                <span>{formatarDataCurta(s.criado_em)}</span>
+                <Badge variant={s.status === "aberta" ? "secondary" : s.status === "aceita" ? "default" : "outline"}>
+                  {s.status === "aberta" ? "Aberta" : s.status === "aceita" ? "Aceita" : "Recusada"}
+                </Badge>
+              </div>
+              <p className="whitespace-pre-wrap">{s.texto}</p>
+              {s.resposta && <p className="text-muted-foreground">Resposta: {s.resposta}</p>}
+              {s.status === "aberta" && (
+                <form className="flex flex-col gap-2 sm:flex-row">
+                  <Input name="resposta" placeholder="Resposta (opcional)" className="flex-1 text-sm" />
+                  <Button formAction={responderSugestao.bind(null, processo.id, s.id, "aceita")} size="sm" variant="outline">
+                    Aceitar
+                  </Button>
+                  <Button formAction={responderSugestao.bind(null, processo.id, s.id, "recusada")} size="sm" variant="ghost">
+                    Recusar
+                  </Button>
+                </form>
+              )}
+            </div>
+          ))}
+          <form action={sugerirAlteracao.bind(null, processo.id)} className="flex flex-col gap-2">
+            <Textarea name="texto" placeholder="Sugerir uma alteração neste processo" className="min-h-16 text-sm" required />
+            <Button type="submit" size="sm" variant="outline" className="self-end">
+              Enviar sugestão
+            </Button>
+          </form>
+        </Section>
+
+        <Section title="Tarefas vinculadas">
+          {(tarefasVinculadas ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma tarefa ligada a este processo.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {tarefasVinculadas!.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/rotinas/${t.id}`} className="flex justify-between gap-2 text-sm hover:underline">
+                    <span className="truncate">{t.titulo}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatarDataCurta(t.prazo)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href={`/rotinas/nova?processo=${processo.id}`} className="text-sm text-muted-foreground hover:text-foreground">
+            + Nova tarefa a partir deste processo
+          </Link>
+        </Section>
+
+        <Section title="Anexos">
+          <Attachments entidade="process" entidadeId={processo.id} caminhoPagina={`/processos/${processo.id}`} />
+        </Section>
+
+        <Section title="Histórico de alterações">
+          <History tabela="processes" registroId={processo.id} />
+        </Section>
 
         <form action={excluirProcesso.bind(null, processo.id)} className="border-t pt-4">
           <Button type="submit" variant="ghost" size="sm" className="text-destructive">

@@ -71,3 +71,18 @@ export const MESES = [
 ];
 
 export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+/** "YYYY-MM-DD" -> Date a meia-noite local. */
+export function parseDateKey(key: string) {
+  return new Date(`${key}T00:00:00`);
+}
+
+export function somarDias(d: Date, dias: number) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + dias);
+}
+
+/** Os 7 dias (domingo a sabado) da semana que contem `d`. */
+export function getWeekDays(d: Date) {
+  const inicio = somarDias(d, -d.getDay());
+  return Array.from({ length: 7 }, (_, i) => somarDias(inicio, i));
+}

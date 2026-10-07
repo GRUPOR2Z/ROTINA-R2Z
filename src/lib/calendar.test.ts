@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateKey, proximaData, gerarProximasDatas } from "./calendar";
+import { dateKey, proximaData, gerarProximasDatas, getWeekDays, somarDias, parseDateKey } from "./calendar";
 
 describe("proximaData", () => {
   it("avança um dia na frequência diária", () => {
@@ -41,5 +41,27 @@ describe("gerarProximasDatas", () => {
 describe("dateKey", () => {
   it("formata a data local sem conversão UTC", () => {
     expect(dateKey(new Date(2026, 8, 5))).toBe("2026-09-05");
+  });
+});
+
+
+describe("getWeekDays", () => {
+  it("começa no domingo e tem 7 dias", () => {
+    const dias = getWeekDays(parseDateKey("2026-10-07")); // quarta
+    expect(dias).toHaveLength(7);
+    expect(dateKey(dias[0])).toBe("2026-10-04");
+    expect(dateKey(dias[6])).toBe("2026-10-10");
+  });
+
+  it("atravessa a virada de mes", () => {
+    const dias = getWeekDays(parseDateKey("2026-10-01"));
+    expect(dateKey(dias[0])).toBe("2026-09-27");
+  });
+});
+
+describe("somarDias", () => {
+  it("soma e subtrai dias", () => {
+    expect(dateKey(somarDias(parseDateKey("2026-12-31"), 1))).toBe("2027-01-01");
+    expect(dateKey(somarDias(parseDateKey("2026-03-01"), -1))).toBe("2026-02-28");
   });
 });

@@ -33,6 +33,7 @@ export default async function RotinasPage({
     .select(
       "id, titulo, status, prioridade, prazo, horario, cor, areas(nome), clients(nome), profiles!tasks_responsavel_id_fkey(nome, email)",
     )
+    .is("parent_task_id", null)
     .order("prazo", { ascending: true, nullsFirst: false })
     .order("criado_em", { ascending: false });
 

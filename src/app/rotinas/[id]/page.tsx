@@ -17,10 +17,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ColorSelect } from "@/components/rotinas/color-select";
+import { SelectField } from "@/components/forms/select-field";
+import { opcoesMembros } from "@/lib/opcoes";
+import { ErroBanner, Section } from "@/components/layout/page-header";
+import { Attachments } from "@/components/documents/attachments";
+import { History } from "@/components/audit/history";
 import { createClient } from "@/lib/supabase/server";
-import { getAreasEMembros } from "@/lib/lookups";
+import { getAreasEMembros, getVinculosTarefa } from "@/lib/lookups";
 import { getClientesAtivos } from "@/lib/clients-data";
-import { atualizarTarefa, excluirTarefa, pararRecorrencia } from "../actions";
+import { formatarData, nomeDe, rel } from "@/lib/format";
+import { atualizarTarefa, criarSubtarefa, excluirTarefa, pararRecorrencia } from "../actions";
 
 const ROTULO_FREQUENCIA: Record<string, string> = {
   diaria: "todo dia",
@@ -30,13 +36,17 @@ const ROTULO_FREQUENCIA: Record<string, string> = {
 
 export default async function TarefaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { id } = await params;
+  const { erro } = await searchParams;
   const supabase = await createClient();
   const { areas, membros } = await getAreasEMembros();
   const clientes = await getClientesAtivos();
+  const vinculos = await getVinculosTarefa();
 
   const { data: tarefa } = await supabase
     .from("tasks")
@@ -50,7 +60,7 @@ export default async function TarefaPage({
     ? clientes.find((c) => c.id === tarefa.client_id)
     : null;
 
-  const [{ data: checklistItens }, { data: comentarios }] = await Promise.all([
+  const [{ data: checklistItens }, { data: comentarios }, { data: subtarefas }, { data: mae }] = await Promise.all([
     supabase
       .from("task_checklist_items")
       .select("id, descricao, concluido")
@@ -61,6 +71,14 @@ export default async function TarefaPage({
       .select("id, texto, criado_em, profiles(nome, email)")
       .eq("task_id", id)
       .order("criado_em", { ascending: false }),
+    supabase
+      .from("tasks")
+      .select("id, titulo, status, prazo, profiles!tasks_responsavel_id_fkey(nome, email)")
+      .eq("parent_task_id", id)
+      .order("criado_em"),
+    tarefa.parent_task_id
+      ? supabase.from("tasks").select("id, titulo").eq("id", tarefa.parent_task_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const { data: ocorrencia } = await supabase
@@ -79,7 +97,11 @@ export default async function TarefaPage({
     <AppShell>
       <div className="flex max-w-3xl flex-col gap-8">
         <div>
-          {clienteVinculado ? (
+          {mae ? (
+            <Link href={`/rotinas/${mae.id}`} className="text-sm text-muted-foreground hover:text-foreground">
+              ← Subtarefa de {mae.titulo}
+            </Link>
+          ) : clienteVinculado ? (
             <Link
               href={`/clientes/${clienteVinculado.id}?tab=tarefas`}
               className="text-sm text-muted-foreground hover:text-foreground"
@@ -119,6 +141,8 @@ export default async function TarefaPage({
             </p>
           )}
         </div>
+
+        <ErroBanner erro={erro} />
 
         <StatusActions taskId={tarefa.id} status={tarefa.status} />
 
@@ -222,6 +246,21 @@ export default async function TarefaPage({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="justificativa_sem_prazo">Justificativa sem prazo</Label>
+                <Input
+                  id="justificativa_sem_prazo"
+                  name="justificativa_sem_prazo"
+                  defaultValue={tarefa.justificativa_sem_prazo ?? ""}
+                  placeholder="Só se não houver prazo"
+                />
+              </div>
+
+              <SelectField name="project_id" label="Projeto" options={vinculos.projetos} defaultValue={tarefa.project_id} emptyLabel="Nenhum" placeholder="Nenhum" />
+              <SelectField name="process_id" label="Processo" options={vinculos.processos} defaultValue={tarefa.process_id} emptyLabel="Nenhum" placeholder="Nenhum" />
+              <SelectField name="kpi_id" label="KPI" options={vinculos.kpis} defaultValue={tarefa.kpi_id} emptyLabel="Nenhum" placeholder="Nenhum" />
+              <SelectField name="okr_id" label="OKR / iniciativa" options={vinculos.okrs} defaultValue={tarefa.okr_id} emptyLabel="Nenhum" placeholder="Nenhum" />
             </div>
 
             <Button type="submit" size="sm" className="self-start">
@@ -229,6 +268,41 @@ export default async function TarefaPage({
             </Button>
           </form>
         </section>
+
+        {!tarefa.parent_task_id && (
+          <Section title="Subtarefas">
+            {(subtarefas ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma subtarefa.</p>
+            )}
+            {(subtarefas ?? []).length > 0 && (
+              <ul className="flex flex-col divide-y rounded-lg border">
+                {subtarefas!.map((s) => (
+                  <li key={s.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <Link href={`/rotinas/${s.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                      {s.titulo}
+                    </Link>
+                    <span className="hidden text-xs text-muted-foreground sm:inline">
+                      {nomeDe(rel(s.profiles))} · {formatarData(s.prazo)}
+                    </span>
+                    <StatusBadge status={s.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={criarSubtarefa.bind(null, tarefa.id)} className="flex flex-col gap-2 sm:flex-row">
+              <Input name="titulo" placeholder="Nova subtarefa" className="flex-1 text-sm" required />
+              <SelectField
+                name="responsavel_id"
+                options={opcoesMembros(membros)}
+                placeholder="Responsável da tarefa"
+                className="sm:w-52"
+              />
+              <Button type="submit" size="sm" variant="outline">
+                Adicionar
+              </Button>
+            </form>
+          </Section>
+        )}
 
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Checklist</h2>
@@ -249,6 +323,14 @@ export default async function TarefaPage({
             }
           />
         </section>
+
+        <Section title="Anexos e evidências">
+          <Attachments entidade="task" entidadeId={tarefa.id} caminhoPagina={`/rotinas/${tarefa.id}`} />
+        </Section>
+
+        <Section title="Histórico de alterações">
+          <History tabela="tasks" registroId={tarefa.id} />
+        </Section>
 
         <form action={excluirTarefa.bind(null, tarefa.id)} className="border-t pt-4">
           <Button type="submit" variant="ghost" size="sm" className="text-destructive">

@@ -7,6 +7,10 @@ import { FarolBadge } from "@/components/kpis/farol-badge";
 import { createClient } from "@/lib/supabase/server";
 import { estaAtrasada } from "@/components/rotinas/status-badge";
 import { calcularFarolPorMeta, type FarolKpi } from "@/lib/kpi-status";
+import { DashboardFilterBar } from "@/components/dashboard/filter-bar";
+import { opcoesAreas, opcoesMembros } from "@/lib/opcoes";
+import { getAreasEMembros } from "@/lib/lookups";
+import { intervaloDoPeriodo } from "@/lib/periodo";
 
 function formatarDataHora(d: Date) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -16,21 +20,34 @@ function formatarData(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; area?: string; responsavel?: string }>;
+}) {
+  const filtros = await searchParams;
   const supabase = await createClient();
   const agora = new Date();
+  const { areas, membros } = await getAreasEMembros();
+  const intervalo = intervaloDoPeriodo(filtros.periodo, agora);
 
-  const [{ data: tasks }, { data: kpis }, { data: okrs }] = await Promise.all([
-    supabase.from("tasks").select("id, titulo, status, prazo, horario"),
-    supabase
-      .from("kpis")
-      .select("id, nome, valor_inicial, meta, tipo_meta, unidade")
-      .eq("ativo", true),
-    supabase
-      .from("okrs")
-      .select("id, titulo, valor_inicial, meta, tipo_meta, unidade")
-      .eq("ativo", true),
-  ]);
+  let qTarefas = supabase.from("tasks").select("id, titulo, status, prazo, horario");
+  let qKpis = supabase.from("kpis").select("id, nome, valor_inicial, meta, tipo_meta, unidade").eq("ativo", true);
+  let qOkrs = supabase.from("okrs").select("id, titulo, valor_inicial, meta, tipo_meta, unidade").eq("ativo", true);
+
+  if (filtros.area) {
+    qTarefas = qTarefas.eq("area_id", filtros.area);
+    qKpis = qKpis.eq("area_id", filtros.area);
+    qOkrs = qOkrs.eq("area_id", filtros.area);
+  }
+  if (filtros.responsavel) {
+    qTarefas = qTarefas.eq("responsavel_id", filtros.responsavel);
+    qKpis = qKpis.eq("responsavel_id", filtros.responsavel);
+    qOkrs = qOkrs.eq("responsavel_id", filtros.responsavel);
+  }
+  if (intervalo) qTarefas = qTarefas.gte("prazo", intervalo.inicio).lte("prazo", intervalo.fim);
+
+  const [{ data: tasks }, { data: kpis }, { data: okrs }] = await Promise.all([qTarefas, qKpis, qOkrs]);
 
   // --- tarefas ---
   const todasTarefas = tasks ?? [];
@@ -104,6 +121,8 @@ export default async function DashboardPage() {
           </div>
           <p className="text-xs text-muted-foreground">Atualizado em {formatarDataHora(agora)}</p>
         </div>
+
+        <DashboardFilterBar areas={opcoesAreas(areas)} membros={opcoesMembros(membros)} />
 
         {semNadaAinda ? (
           <EmptyState

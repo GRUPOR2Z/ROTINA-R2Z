@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProcessExtraFields } from "@/components/processos/extra-fields";
 import { getAreasEMembros } from "@/lib/lookups";
 import { criarProcesso } from "../actions";
 
@@ -104,6 +105,8 @@ export default async function NovoProcessoPage() {
             <Label htmlFor="criterios_conclusao">Critérios de conclusão</Label>
             <Textarea id="criterios_conclusao" name="criterios_conclusao" />
           </div>
+
+          <ProcessExtraFields membros={membros} />
 
           <SubmitButton className="mt-2 self-start" pendingText="Criando…">
             Criar processo

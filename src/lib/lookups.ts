@@ -13,3 +13,22 @@ export async function getAreasEMembros() {
     membros: membros ?? [],
   };
 }
+
+/** Opcoes pros selects de vinculo (tarefa -> processo/KPI/OKR/projeto). */
+export async function getVinculosTarefa() {
+  const supabase = await createClient();
+
+  const [{ data: processos }, { data: kpis }, { data: okrs }, { data: projetos }] = await Promise.all([
+    supabase.from("processes").select("id, titulo").neq("status", "arquivado").order("titulo"),
+    supabase.from("kpis").select("id, nome").eq("ativo", true).order("nome"),
+    supabase.from("okrs").select("id, titulo").eq("ativo", true).order("titulo"),
+    supabase.from("projects").select("id, nome").neq("status", "cancelado").order("nome"),
+  ]);
+
+  return {
+    processos: (processos ?? []).map((p) => ({ value: p.id, label: p.titulo })),
+    kpis: (kpis ?? []).map((k) => ({ value: k.id, label: k.nome })),
+    okrs: (okrs ?? []).map((o) => ({ value: o.id, label: o.titulo })),
+    projetos: (projetos ?? []).map((p) => ({ value: p.id, label: p.nome })),
+  };
+}
