@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NavLinks, SettingsLink } from "@/components/layout/nav-links";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { contarAlertasNaoLidos } from "@/lib/alertas-data";
 
 function iniciais(nome: string | null | undefined, email: string | null | undefined) {
   const base = nome?.trim() || email || "?";
@@ -22,6 +23,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
+  const alertasNaoLidos = user ? await contarAlertasNaoLidos() : 0;
 
   return (
     <div className="flex min-h-screen">
@@ -31,7 +33,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
             <p className="text-sm font-semibold">Grupo R2Z OS</p>
             <p className="text-xs text-muted-foreground">Gestão operacional</p>
           </div>
-          <NavLinks />
+          <NavLinks contadores={{ "/alertas": alertasNaoLidos }} />
         </div>
 
         <div className="flex flex-col gap-2">

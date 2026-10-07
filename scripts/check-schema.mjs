@@ -60,6 +60,8 @@ const tabelas = [
   "onboarding_steps",
   "onboarding_assignments",
   "onboarding_progress",
+  "alerts",
+  "alert_preferences",
 ];
 
 for (const tabela of tabelas) {

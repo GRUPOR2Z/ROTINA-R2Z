@@ -8,6 +8,7 @@ type Item = { href: string; label: string; tambem?: string[] };
 
 const ITEMS: Item[] = [
   { href: "/", label: "Dashboard" },
+  { href: "/alertas", label: "Alertas" },
   { href: "/clientes", label: "Clientes" },
   { href: "/rotinas", label: "Rotinas" },
   { href: "/projetos", label: "Projetos" },
@@ -27,7 +28,7 @@ function navLinkClass(active: boolean) {
   );
 }
 
-export function NavLinks() {
+export function NavLinks({ contadores = {} }: { contadores?: Record<string, number> }) {
   const pathname = usePathname();
 
   return (
@@ -39,7 +40,14 @@ export function NavLinks() {
             : [item.href, ...(item.tambem ?? [])].some((h) => pathname.startsWith(h));
         return (
           <Link key={item.href} href={item.href} className={navLinkClass(active)}>
-            {item.label}
+            <span className="flex items-center justify-between gap-2">
+              {item.label}
+              {(contadores[item.href] ?? 0) > 0 && (
+                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-white">
+                  {contadores[item.href]}
+                </span>
+              )}
+            </span>
           </Link>
         );
       })}
