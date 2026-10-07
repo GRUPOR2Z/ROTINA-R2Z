@@ -17,6 +17,7 @@ const ITEMS: Item[] = [
   { href: "/okrs", label: "OKRs" },
   { href: "/melhorias", label: "Melhorias" },
   { href: "/equipe", label: "Equipe" },
+  { href: "/onboarding", label: "Onboarding" },
 ];
 
 function navLinkClass(active: boolean) {

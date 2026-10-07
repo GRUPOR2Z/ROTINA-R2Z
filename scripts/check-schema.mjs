@@ -56,6 +56,10 @@ const tabelas = [
   "decisions",
   "decision_participants",
   "improvement_items",
+  "onboarding_tracks",
+  "onboarding_steps",
+  "onboarding_assignments",
+  "onboarding_progress",
 ];
 
 for (const tabela of tabelas) {
