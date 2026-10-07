@@ -15,6 +15,7 @@ const ITEMS: Item[] = [
   { href: "/processos", label: "Processos" },
   { href: "/kpis", label: "KPIs" },
   { href: "/okrs", label: "OKRs" },
+  { href: "/melhorias", label: "Melhorias" },
   { href: "/equipe", label: "Equipe" },
 ];
 
