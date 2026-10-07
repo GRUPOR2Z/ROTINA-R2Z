@@ -22,5 +22,7 @@ export async function getCurrentProfile() {
     email: profile?.email ?? user.email ?? null,
     cargo: profile?.cargo ?? null,
     isAdmin: roleNome === "administrador",
+    isGestorOuAdmin: roleNome === "administrador" || roleNome === "gestor",
+    papel: roleNome ?? null,
   };
 }

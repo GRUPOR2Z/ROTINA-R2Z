@@ -62,6 +62,9 @@ const tabelas = [
   "onboarding_progress",
   "alerts",
   "alert_preferences",
+  "ai_reports",
+  "ai_findings",
+  "ai_finding_comments",
 ];
 
 for (const tabela of tabelas) {

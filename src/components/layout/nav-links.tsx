@@ -17,6 +17,7 @@ const ITEMS: Item[] = [
   { href: "/kpis", label: "KPIs" },
   { href: "/okrs", label: "OKRs" },
   { href: "/melhorias", label: "Melhorias" },
+  { href: "/ia", label: "Grupo R2Z IA" },
   { href: "/equipe", label: "Equipe" },
   { href: "/onboarding", label: "Onboarding" },
 ];
