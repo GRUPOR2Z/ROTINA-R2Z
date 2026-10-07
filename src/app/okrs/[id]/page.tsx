@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
 import { calcularFarolPorMeta } from "@/lib/kpi-status";
 import { calcularProgresso } from "@/lib/okr";
+import { LinkedWork } from "@/components/vinculos/linked-work";
 import { atualizarOkr, registrarValor, excluirValor, excluirOkr } from "../actions";
 
 function formatarData(iso: string) {
@@ -256,6 +257,8 @@ export default async function OkrPage({
             </Button>
           </form>
         </section>
+
+        <LinkedWork coluna="okr_id" id={okr.id} titulo="Iniciativas (tarefas, melhorias e decisões)" />
 
         <form action={excluirOkr.bind(null, okr.id)} className="border-t pt-4">
           <Button type="submit" variant="ghost" size="sm" className="text-destructive">

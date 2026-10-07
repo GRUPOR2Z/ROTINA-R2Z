@@ -11,6 +11,12 @@ import { DashboardFilterBar } from "@/components/dashboard/filter-bar";
 import { opcoesAreas, opcoesMembros } from "@/lib/opcoes";
 import { getAreasEMembros } from "@/lib/lookups";
 import { intervaloDoPeriodo } from "@/lib/periodo";
+import { getCurrentProfile } from "@/lib/current-profile";
+import { getAlertasDoUsuario } from "@/lib/alertas-data";
+import { ordenarAlertas } from "@/lib/alertas";
+import { getAndamentoProjetos } from "@/lib/projetos-data";
+import { BarraAndamento, PrazoProjeto } from "@/components/projetos/status-badge";
+import { Badge } from "@/components/ui/badge";
 
 function formatarDataHora(d: Date) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -47,7 +53,34 @@ export default async function DashboardPage({
   }
   if (intervalo) qTarefas = qTarefas.gte("prazo", intervalo.inicio).lte("prazo", intervalo.fim);
 
-  const [{ data: tasks }, { data: kpis }, { data: okrs }] = await Promise.all([qTarefas, qKpis, qOkrs]);
+  let qProjetos = supabase
+    .from("projects")
+    .select("id, nome, status, prazo")
+    .in("status", ["planejamento", "em_andamento", "pausado"])
+    .order("prazo", { ascending: true, nullsFirst: false })
+    .limit(6);
+  if (filtros.area) qProjetos = qProjetos.eq("area_id", filtros.area);
+  if (filtros.responsavel) qProjetos = qProjetos.eq("responsavel_id", filtros.responsavel);
+
+  const eu = await getCurrentProfile();
+  const [{ data: tasks }, { data: kpis }, { data: okrs }, { data: projetos }, { alertas }, { data: ultimoRelatorio }] =
+    await Promise.all([
+      qTarefas,
+      qKpis,
+      qOkrs,
+      qProjetos,
+      getAlertasDoUsuario({ limite: 50 }),
+      eu?.isGestorOuAdmin
+        ? supabase
+            .from("ai_reports")
+            .select("id, titulo, resumo, gerado_em, dados_insuficientes, ai_findings(validacao)")
+            .order("gerado_em", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+  const andamentoProjetos = await getAndamentoProjetos((projetos ?? []).map((p) => p.id));
+  const alertasPrincipais = ordenarAlertas(alertas.filter((a) => !a.lido_em)).slice(0, 5);
 
   // --- tarefas ---
   const todasTarefas = tasks ?? [];
@@ -231,6 +264,89 @@ export default async function DashboardPage({
               </section>
             </div>
           </>
+        )}
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground">Alertas</h2>
+              <Link href="/alertas" className="text-xs text-muted-foreground hover:text-foreground">
+                Central de alertas →
+              </Link>
+            </div>
+            {alertasPrincipais.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum alerta não lido.</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {alertasPrincipais.map((a) => (
+                  <li key={a.id} className="flex items-center gap-2 text-sm">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        a.severidade === "critico" ? "bg-red-500" : a.severidade === "atencao" ? "bg-amber-500" : "bg-blue-400"
+                      }`}
+                    />
+                    <Link href={a.link ?? "/alertas"} className="min-w-0 flex-1 truncate hover:underline">
+                      {a.titulo}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground">Projetos ativos</h2>
+              <Link href="/projetos" className="text-xs text-muted-foreground hover:text-foreground">
+                Ver todos →
+              </Link>
+            </div>
+            {(projetos ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum projeto ativo.</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {projetos!.map((p) => (
+                  <li key={p.id} className="flex flex-col gap-1">
+                    <Link href={`/projetos/${p.id}`} className="flex items-center justify-between gap-2 text-sm hover:underline">
+                      <span className="truncate">{p.nome}</span>
+                      <PrazoProjeto prazo={p.prazo} status={p.status} />
+                    </Link>
+                    <BarraAndamento valor={andamentoProjetos.get(p.id) ?? null} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        {eu?.isGestorOuAdmin && (
+          <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground">Última análise da Grupo R2Z IA</h2>
+              <Link href="/ia" className="text-xs text-muted-foreground hover:text-foreground">
+                Ver relatórios →
+              </Link>
+            </div>
+            {!ultimoRelatorio ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum relatório ainda — eles chegam quando a integração com o n8n for ligada.
+              </p>
+            ) : (
+              <Link href={`/ia/${ultimoRelatorio.id}`} className="flex flex-col gap-1 hover:underline">
+                <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  {ultimoRelatorio.titulo}
+                  {ultimoRelatorio.dados_insuficientes && <Badge variant="outline">Dados insuficientes</Badge>}
+                  {(ultimoRelatorio.ai_findings ?? []).some((f: { validacao: string }) => f.validacao === "pendente") && (
+                    <Badge>Achados para validar</Badge>
+                  )}
+                </span>
+                {ultimoRelatorio.resumo && (
+                  <span className="line-clamp-2 text-sm text-muted-foreground">{ultimoRelatorio.resumo}</span>
+                )}
+                <span className="text-xs text-muted-foreground">Gerado em {formatarDataHora(new Date(ultimoRelatorio.gerado_em))}</span>
+              </Link>
+            )}
+          </section>
         )}
       </div>
     </AppShell>

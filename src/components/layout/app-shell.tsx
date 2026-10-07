@@ -33,6 +33,15 @@ export async function AppShell({ children }: { children: ReactNode }) {
             <p className="text-sm font-semibold">Grupo R2Z OS</p>
             <p className="text-xs text-muted-foreground">Gestão operacional</p>
           </div>
+          <form action="/busca" role="search">
+            <input
+              name="q"
+              type="search"
+              placeholder="Buscar…"
+              aria-label="Busca global"
+              className="h-8 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            />
+          </form>
           <NavLinks contadores={{ "/alertas": alertasNaoLidos }} />
         </div>
 

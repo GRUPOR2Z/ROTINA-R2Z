@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/server";
 import { getAreasEMembros } from "@/lib/lookups";
-import { calcularFarolPorMeta } from "@/lib/kpi-status";
+import { calcularFarolPorMeta, validadeKpi } from "@/lib/kpi-status";
+import { LinkedWork } from "@/components/vinculos/linked-work";
 import { atualizarKpi, registrarValor, excluirValor, excluirKpi } from "../actions";
 
 function formatarData(iso: string) {
@@ -55,6 +56,7 @@ export default async function KpiPage({
 
   const valorAtual = valores?.[0]?.valor ?? null;
   const farol = calcularFarolPorMeta(valorAtual, kpi.valor_inicial, kpi.meta);
+  const validade = validadeKpi(valores?.[0]?.referencia_periodo ?? null, kpi.periodicidade);
   const sufixoUnidade = kpi.tipo_meta === "percentual" ? "%" : kpi.unidade ? ` ${kpi.unidade}` : "";
 
   return (
@@ -101,6 +103,12 @@ export default async function KpiPage({
           )}
           <div className="ml-auto text-right text-xs text-muted-foreground">
             {valores?.[0] && <p>Atualizado em {formatarData(valores[0].referencia_periodo)}</p>}
+            {validade.validoAte && (
+              <p className={validade.desatualizado ? "font-medium text-destructive" : ""}>
+                {validade.desatualizado ? "Desatualizado desde" : "Válido até"} {formatarData(validade.validoAte)}
+              </p>
+            )}
+            {!valores?.[0] && <p className="text-destructive">Nenhum valor registrado</p>}
           </div>
         </div>
 
@@ -261,6 +269,8 @@ export default async function KpiPage({
             </Button>
           </form>
         </section>
+
+        <LinkedWork coluna="kpi_id" id={kpi.id} titulo="Tarefas que afetam este indicador" />
 
         <form action={excluirKpi.bind(null, kpi.id)} className="border-t pt-4">
           <Button type="submit" variant="ghost" size="sm" className="text-destructive">

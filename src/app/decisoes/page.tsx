@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/server";
 import { formatarData, nomeDe, rel } from "@/lib/format";
+import { limparTermoBusca } from "@/lib/busca";
 
 export default async function DecisoesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
@@ -20,8 +21,8 @@ export default async function DecisoesPage({ searchParams }: { searchParams: Pro
     .limit(100);
 
   // busca simples em titulo/decisao/contexto -- "encontrar decisoes antigas"
-  // e' um dos problemas do Doc. 1. Remove caracteres que quebram o .or()
-  const termo = q?.replace(/[,()%]/g, " ").trim();
+  // e' um dos problemas do Doc. 1
+  const termo = limparTermoBusca(q);
   if (termo) query = query.or(`titulo.ilike.%${termo}%,decisao.ilike.%${termo}%,contexto.ilike.%${termo}%`);
 
   const { data: decisoes } = await query;

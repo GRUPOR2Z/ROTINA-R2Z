@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularFarolPorMeta } from "./kpi-status";
+import { calcularFarolPorMeta, validadeKpi } from "./kpi-status";
 
 describe("calcularFarolPorMeta", () => {
   it("meta atingida ou superada é ok (meta de subir: 2 → 4)", () => {
@@ -33,5 +33,21 @@ describe("calcularFarolPorMeta", () => {
   it("meta igual ao valor inicial: ok só se já estiver exatamente na meta", () => {
     expect(calcularFarolPorMeta(5, 5, 5)).toBe("ok");
     expect(calcularFarolPorMeta(4, 5, 5)).toBe("atencao");
+  });
+});
+
+describe("validadeKpi", () => {
+  const hoje = new Date(2026, 9, 7);
+
+  it("mensal vale 35 dias depois da referencia", () => {
+    expect(validadeKpi("2026-09-30", "mensal", hoje)).toEqual({ validoAte: "2026-11-04", desatualizado: false });
+  });
+
+  it("semanal antigo fica desatualizado", () => {
+    expect(validadeKpi("2026-09-01", "semanal", hoje).desatualizado).toBe(true);
+  });
+
+  it("sem valor e' desatualizado", () => {
+    expect(validadeKpi(null, "mensal", hoje)).toEqual({ validoAte: null, desatualizado: true });
   });
 });
