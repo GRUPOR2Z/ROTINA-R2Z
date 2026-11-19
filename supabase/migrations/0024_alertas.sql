@@ -76,36 +76,23 @@ create policy "alert_preferences: cada um as suas"
 -- ---------------------------------------------------------------
 -- geracao
 -- ---------------------------------------------------------------
-create or replace function public.gerar_alertas(p_forcar boolean default false)
-returns integer
-language plpgsql
+-- private.alertas_atuais(): o que deveria estar em alerta agora.
+-- Fica no schema "private", que a API (PostgREST) nao expoe e no qual
+-- anon/authenticated nao tem USAGE -- so' gerar_alertas (security
+-- definer) consegue chamar. Nao usa tabela temporaria nem revoke para
+-- a migration poder ser aplicada pelo conector do Supabase.
+create schema if not exists private;
+
+create or replace function private.alertas_atuais()
+returns table (
+  tipo text, severidade text, titulo text, descricao text, link text,
+  entidade text, entidade_id uuid, destinatario_id uuid, chave text, task_id uuid
+)
+language sql
+stable
 security definer set search_path = public
 as $$
-declare
-  v_novos integer := 0;
-begin
-  -- so admin (ou o n8n via service_role) pode furar a trava
-  if p_forcar and not (public.is_admin() or coalesce(auth.role(), '') = 'service_role') then
-    p_forcar := false;
-  end if;
-
-  if not p_forcar and exists (
-    select 1 from public.alert_generation_state
-    where ultima_geracao is not null and ultima_geracao > now() - interval '5 minutes'
-  ) then
-    return 0;
-  end if;
-
-  update public.alert_generation_state set ultima_geracao = now();
-
-  create temporary table if not exists _alertas_atuais (
-    tipo text, severidade text, titulo text, descricao text, link text,
-    entidade text, entidade_id uuid, destinatario_id uuid, chave text, task_id uuid
-  ) on commit drop;
-  truncate _alertas_atuais;
-
   -- tarefas atrasadas (so tarefa principal; subtarefa segue a mae)
-  insert into _alertas_atuais
   select 'tarefa_atrasada',
          case when t.prioridade = 'alta' then 'critico' else 'atencao' end,
          'Tarefa atrasada: ' || t.titulo,
@@ -113,29 +100,29 @@ begin
          '/rotinas/' || t.id, 'task', t.id, t.responsavel_id,
          'tarefa_atrasada:' || t.id, t.id
   from public.tasks t
-  where t.status <> 'concluida' and t.prazo < current_date and t.parent_task_id is null;
+  where t.status <> 'concluida' and t.prazo < current_date and t.parent_task_id is null
 
+  union all
   -- prazo nos proximos 2 dias
-  insert into _alertas_atuais
   select 'prazo_proximo', 'info',
          'Prazo próximo: ' || t.titulo,
          'Vence em ' || to_char(t.prazo, 'DD/MM/YYYY') || '.',
          '/rotinas/' || t.id, 'task', t.id, t.responsavel_id,
          'prazo_proximo:' || t.id || ':' || t.prazo, t.id
   from public.tasks t
-  where t.status <> 'concluida' and t.prazo between current_date and current_date + 2 and t.parent_task_id is null;
+  where t.status <> 'concluida' and t.prazo between current_date and current_date + 2 and t.parent_task_id is null
 
+  union all
   -- processos aguardando revisao
-  insert into _alertas_atuais
   select 'processo_revisao', 'info',
          'Processo em revisão: ' || p.titulo, null,
          '/processos/' || p.id, 'process', p.id, p.responsavel_id,
          'processo_revisao:' || p.id, null
   from public.processes p
-  where p.status = 'revisao';
+  where p.status = 'revisao'
 
+  union all
   -- processos com revisao periodica vencida
-  insert into _alertas_atuais
   select 'processo_revisao', 'atencao',
          'Revisão vencida: ' || p.titulo,
          'Deveria ter sido revisado em ' || to_char(p.ultima_revisao_em + p.frequencia_revisao_dias, 'DD/MM/YYYY') || '.',
@@ -145,20 +132,20 @@ begin
   where p.status = 'publicado'
     and p.frequencia_revisao_dias is not null
     and p.ultima_revisao_em is not null
-    and p.ultima_revisao_em + p.frequencia_revisao_dias < current_date;
+    and p.ultima_revisao_em + p.frequencia_revisao_dias < current_date
 
+  union all
   -- processo critico sem substituto (dependencia de uma pessoa so)
-  insert into _alertas_atuais
   select 'processo_revisao', 'atencao',
          'Processo crítico sem substituto: ' || p.titulo,
          'Defina um substituto para não depender de uma pessoa só.',
          '/processos/' || p.id, 'process', p.id, p.responsavel_id,
          'processo_sem_substituto:' || p.id, null
   from public.processes p
-  where p.critico and p.substituto_id is null and p.status <> 'arquivado';
+  where p.critico and p.substituto_id is null and p.status <> 'arquivado'
 
+  union all
   -- KPIs desatualizados: ultimo valor mais velho que a periodicidade
-  insert into _alertas_atuais
   select 'kpi_desatualizado', 'atencao',
          'KPI desatualizado: ' || k.nome,
          case when u.ultima is null then 'Nenhum valor registrado ainda.'
@@ -171,10 +158,10 @@ begin
   ) u on true
   where k.ativo
     and coalesce(u.ultima, k.criado_em::date) < current_date - case k.periodicidade
-      when 'diaria' then 2 when 'semanal' then 9 when 'mensal' then 35 else 100 end;
+      when 'diaria' then 2 when 'semanal' then 9 when 'mensal' then 35 else 100 end
 
+  union all
   -- falhas de integracao (ultimos 7 dias), alerta geral
-  insert into _alertas_atuais
   select 'falha_integracao', 'critico',
          'Falha de integração: ' || l.origem,
          left(coalesce(l.erro_detalhe, l.endpoint), 300),
@@ -182,11 +169,39 @@ begin
          'falha_integracao:' || l.id, null
   from public.integration_logs l
   where l.status = 'erro' and l.criado_em > now() - interval '7 days';
+$$;
+
+create or replace function public.gerar_alertas(p_forcar boolean default false)
+returns integer
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_novos integer := 0;
+begin
+  -- so usuario logado ou o n8n (service_role) gera alertas
+  if coalesce(auth.role(), '') not in ('authenticated', 'service_role') then
+    return 0;
+  end if;
+
+  -- so admin (ou o n8n via service_role) pode furar a trava
+  if p_forcar and not (public.is_admin() or coalesce(auth.role(), '') = 'service_role') then
+    p_forcar := false;
+  end if;
+
+  if not p_forcar and exists (
+    select 1 from public.alert_generation_state
+    where ultima_geracao is not null and ultima_geracao > now() - interval '5 minutes'
+  ) then
+    return 0;
+  end if;
+
+  update public.alert_generation_state set ultima_geracao = now() where id;
 
   insert into public.alerts (tipo, severidade, titulo, descricao, link, entidade, entidade_id, destinatario_id, chave, task_id, origem)
-  select tipo, severidade, titulo, descricao, link, entidade, entidade_id, destinatario_id, chave, task_id, 'sistema'
-  from _alertas_atuais
-  where chave is not null
+  select x.tipo, x.severidade, x.titulo, x.descricao, x.link, x.entidade, x.entidade_id, x.destinatario_id, x.chave, x.task_id, 'sistema'
+  from private.alertas_atuais() x
+  where x.chave is not null
   on conflict (chave) do update
     set resolvido_em = null, destinatario_id = excluded.destinatario_id
     where public.alerts.resolvido_em is not null;
@@ -197,11 +212,10 @@ begin
   set resolvido_em = now()
   where a.origem = 'sistema'
     and a.resolvido_em is null
-    and not exists (select 1 from _alertas_atuais x where x.chave = a.chave);
+    and not exists (select 1 from private.alertas_atuais() x where x.chave = a.chave);
 
   return v_novos;
 end;
 $$;
 
-revoke all on function public.gerar_alertas(boolean) from public;
 grant execute on function public.gerar_alertas(boolean) to authenticated, service_role;
