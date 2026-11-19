@@ -1,4 +1,5 @@
-import { Check, FileDown, MessageSquareWarning } from "lucide-react";
+import { Check, ChevronRight, FileDown, FileText, MessageSquareWarning, Pencil, Trash2 } from "lucide-react";
+import { PostDialogs, PostTrigger, type PostDetalhe } from "@/components/clientes/post-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,17 @@ type Post = {
   responsavel_id: string | null;
   comentario_cliente: string | null;
   respondido_em: string | null;
+  roteiro: string | null;
 };
+
+function quando(post: Post) {
+  const data = new Date(`${post.data}T00:00:00`).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return post.horario ? `${data} · ${post.horario.slice(0, 5)}` : data;
+}
 
 /** Calendário de conteúdo do cliente (calendar_events por client_id).
  *  - modo "equipe": página interna do cliente, cria/edita/exclui posts;
@@ -80,7 +91,7 @@ export async function ClientCalendar({
   const supabase = await createClient();
   const { data } = await supabase
     .from("calendar_events")
-    .select("id, titulo, tipo, data, horario, cor, rede, formato, status, responsavel_id, comentario_cliente, respondido_em")
+    .select("id, titulo, tipo, data, horario, cor, rede, formato, status, responsavel_id, comentario_cliente, respondido_em, roteiro")
     .eq("client_id", clientId)
     .gte("data", inicio)
     .lte("data", fim)
@@ -105,7 +116,35 @@ export async function ClientCalendar({
   const doMes = eventos.filter((e) => Number(e.data.slice(5, 7)) === mesNumero);
   const aguardando = doMes.filter((e) => e.status === "em_aprovacao").length;
 
+  // dados da janela de cada post (inclui os dias de borda da grade)
+  const nomeMembro = new Map(membros.map((m) => [m.id, m.nome || m.email]));
+  const detalhes: PostDetalhe[] = eventos.map((e) => {
+    const st = infoStatus(e.status);
+    return {
+      id: e.id,
+      titulo: e.titulo,
+      quando: quando(e),
+      meta: [rotuloRedeFormato(e.rede, e.formato), e.tipo].filter(Boolean).join(" · ") || null,
+      statusRotulo: st.rotulo,
+      statusChip: st.chip,
+      roteiro: e.roteiro,
+      comentarioCliente: e.comentario_cliente,
+      responsavel: editavel && e.responsavel_id ? (nomeMembro.get(e.responsavel_id) ?? null) : null,
+    };
+  });
+  const extras: Record<string, React.ReactNode> = Object.fromEntries(
+    eventos.map((e) => [
+      e.id,
+      editavel ? (
+        <EdicaoPost key={e.id} evento={e} clientId={clientId} membros={membros} />
+      ) : e.status === "em_aprovacao" ? (
+        <RespostaCliente key={e.id} evento={e} clientId={clientId} />
+      ) : null,
+    ]),
+  );
+
   return (
+    <PostDialogs posts={detalhes} extras={extras}>
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-semibold text-brand-900">
@@ -131,7 +170,7 @@ export async function ClientCalendar({
       {aguardando > 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {modo === "portal"
-            ? `${aguardando} ${aguardando === 1 ? "post aguarda" : "posts aguardam"} a sua aprovação — veja a lista abaixo.`
+            ? `${aguardando} ${aguardando === 1 ? "post aguarda" : "posts aguardam"} a sua aprovação — clique no post para revisar.`
             : `${aguardando} ${aguardando === 1 ? "post aguarda" : "posts aguardam"} aprovação do cliente.`}
         </p>
       )}
@@ -166,17 +205,21 @@ export async function ClientCalendar({
                     const meta = rotuloRedeFormato(evento.rede, evento.formato);
                     const st = infoStatus(evento.status);
                     return (
-                      <div
+                      <PostTrigger
                         key={evento.id}
-                        className={`rounded-md px-1.5 py-1 text-[11px] leading-tight ${st.chip}`}
+                        id={evento.id}
+                        className={`w-full cursor-pointer rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition hover:brightness-95 hover:ring-1 hover:ring-brand-600/30 ${st.chip}`}
                         title={[evento.titulo, meta, st.rotulo].filter(Boolean).join(" — ")}
                       >
-                        <p className="truncate font-medium">
-                          {evento.horario ? `${evento.horario.slice(0, 5)} · ` : ""}
-                          {evento.titulo}
-                        </p>
-                        {meta && <p className="truncate opacity-75">{meta}</p>}
-                      </div>
+                        <span className="flex items-center gap-1">
+                          <span className="truncate font-medium">
+                            {evento.horario ? `${evento.horario.slice(0, 5)} · ` : ""}
+                            {evento.titulo}
+                          </span>
+                          {evento.roteiro && <FileText size={10} className="shrink-0 opacity-60" aria-label="Tem roteiro" />}
+                        </span>
+                        {meta && <span className="block truncate opacity-75">{meta}</span>}
+                      </PostTrigger>
                     );
                   })}
                   {eventosDoDia.length > 3 && (
@@ -221,104 +264,110 @@ export async function ClientCalendar({
         ) : (
           <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {doMes.map((evento) => (
-              <LinhaPost key={evento.id} evento={evento} clientId={clientId} modo={modo} membros={membros} />
+              <LinhaPost key={evento.id} evento={evento} modo={modo} />
             ))}
           </div>
         )}
       </section>
     </div>
+    </PostDialogs>
   );
 }
 
-function LinhaPost({
-  evento,
-  clientId,
-  modo,
-  membros,
-}: {
-  evento: Post;
-  clientId: string;
-  modo: "equipe" | "portal";
-  membros: Membro[];
-}) {
+function LinhaPost({ evento, modo }: { evento: Post; modo: "equipe" | "portal" }) {
   const data = new Date(`${evento.data}T00:00:00`);
   const meta = rotuloRedeFormato(evento.rede, evento.formato);
   const st = infoStatus(evento.status);
+  const aguardaCliente = evento.status === "em_aprovacao";
 
   return (
-    <div className="flex flex-col gap-3 p-3 text-sm">
-      <div className="flex items-start gap-4">
-        <div className="w-12 shrink-0 text-center">
-          <p className="text-lg leading-none font-semibold text-brand-900">{data.getDate()}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground uppercase">
-            {data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
-          </p>
-        </div>
-        <span className={`mt-0.5 h-9 w-1 shrink-0 rounded-full ${evento.cor ? (infoCor(evento.cor)?.dot ?? st.dot) : st.dot}`} />
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground">{evento.titulo}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {[evento.horario?.slice(0, 5), meta, evento.tipo].filter(Boolean).join(" · ") || "Dia inteiro"}
-          </p>
-        </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${st.chip}`}>{st.rotulo}</span>
-      </div>
-
-      {evento.comentario_cliente && (
-        <p className="ml-16 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-900">
-          <MessageSquareWarning size={14} className="mt-0.5 shrink-0" />
-          <span>
-            <span className="font-medium">Comentário do cliente:</span> {evento.comentario_cliente}
+    <PostTrigger
+      id={evento.id}
+      className="flex w-full cursor-pointer items-start gap-4 p-3 text-left text-sm transition hover:bg-brand-50/60"
+    >
+      <span className="w-12 shrink-0 text-center">
+        <span className="block text-lg leading-none font-semibold text-brand-900">{data.getDate()}</span>
+        <span className="mt-0.5 block text-[11px] text-muted-foreground uppercase">
+          {data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+        </span>
+      </span>
+      <span className={`mt-0.5 h-9 w-1 shrink-0 rounded-full ${evento.cor ? (infoCor(evento.cor)?.dot ?? st.dot) : st.dot}`} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium text-foreground">{evento.titulo}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          <span>{[evento.horario?.slice(0, 5), meta, evento.tipo].filter(Boolean).join(" · ") || "Dia inteiro"}</span>
+          {evento.roteiro && (
+            <span className="inline-flex items-center gap-1 text-brand-700">
+              <FileText size={12} /> roteiro
+            </span>
+          )}
+          {evento.comentario_cliente && (
+            <span className="inline-flex items-center gap-1 text-red-700">
+              <MessageSquareWarning size={12} /> comentário do cliente
+            </span>
+          )}
+        </span>
+        {aguardaCliente && modo === "portal" && (
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
+            Clique para revisar e aprovar
           </span>
-        </p>
-      )}
+        )}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${st.chip}`}>{st.rotulo}</span>
+        <ChevronRight size={16} className="text-muted-foreground" />
+      </span>
+    </PostTrigger>
+  );
+}
 
-      {evento.status === "em_aprovacao" && modo === "portal" && (
-        <div className="ml-16 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-          <form action={responderPost.bind(null, evento.id, clientId, true)}>
-            <SubmitButton size="sm" pendingText="Aprovando…">
-              <Check size={14} /> Aprovar
-            </SubmitButton>
-          </form>
-          <form action={responderPost.bind(null, evento.id, clientId, false)} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <Textarea
-              name="comentario"
-              required
-              rows={1}
-              placeholder="Ou descreva o ajuste que você quer…"
-              className="min-h-9 flex-1 bg-white text-sm"
-            />
-            <SubmitButton size="sm" variant="outline" pendingText="Enviando…">
-              Pedir ajuste
-            </SubmitButton>
-          </form>
-        </div>
-      )}
+/** Dentro da janela do post (equipe): editar e excluir. */
+function EdicaoPost({ evento, clientId, membros }: { evento: Post; clientId: string; membros: Membro[] }) {
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-4">
+      <details className="group" open={!evento.roteiro}>
+        <summary className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900">
+          <Pencil size={14} /> {evento.roteiro ? "Editar post e roteiro" : "Editar post e escrever o roteiro"}
+        </summary>
+        <form action={atualizarEventoCalendario.bind(null, evento.id, clientId)} className="mt-3 flex flex-col gap-3">
+          <CamposPost prefixo={evento.id} membros={membros} post={evento} />
+          <SubmitButton size="sm" className="self-start" pendingText="Salvando…">
+            Salvar alterações
+          </SubmitButton>
+        </form>
+      </details>
+      <form action={excluirEventoCalendario.bind(null, evento.id, clientId)} className="self-end">
+        <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+          <Trash2 size={14} /> Excluir post
+        </Button>
+      </form>
+    </section>
+  );
+}
 
-      {modo === "equipe" && (
-        <div className="ml-16 flex items-center gap-1">
-          <details className="group flex-1">
-            <summary className="inline-flex cursor-pointer items-center rounded-md px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">
-              Editar
-            </summary>
-            <form
-              action={atualizarEventoCalendario.bind(null, evento.id, clientId)}
-              className="mt-2 flex flex-col gap-3 rounded-lg border border-border p-3"
-            >
-              <CamposPost prefixo={evento.id} membros={membros} post={evento} />
-              <SubmitButton size="sm" className="self-start" pendingText="Salvando…">
-                Salvar alterações
-              </SubmitButton>
-            </form>
-          </details>
-          <form action={excluirEventoCalendario.bind(null, evento.id, clientId)} className="self-start">
-            <Button type="submit" size="sm" variant="ghost" className="h-7 text-xs text-destructive">
-              Excluir
-            </Button>
-          </form>
-        </div>
-      )}
-    </div>
+/** Dentro da janela do post (portal): o cliente aprova ou pede ajuste. */
+function RespostaCliente({ evento, clientId }: { evento: Post; clientId: string }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+      <p className="text-sm font-medium text-amber-950">Este post aguarda a sua aprovação.</p>
+      <form action={responderPost.bind(null, evento.id, clientId, true)}>
+        <SubmitButton size="sm" pendingText="Aprovando…">
+          <Check size={14} /> Aprovar
+        </SubmitButton>
+      </form>
+      <form action={responderPost.bind(null, evento.id, clientId, false)} className="flex flex-col gap-2">
+        <Textarea
+          name="comentario"
+          required
+          rows={3}
+          placeholder="Ou descreva o ajuste que você quer…"
+          className="bg-white text-sm"
+        />
+        <SubmitButton size="sm" variant="outline" className="self-start" pendingText="Enviando…">
+          Pedir ajuste
+        </SubmitButton>
+      </form>
+    </section>
   );
 }
 
@@ -384,6 +433,17 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
         emptyLabel="Pela cor do status"
         className="flex flex-col gap-1.5"
       />
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label htmlFor={id("roteiro")}>Roteiro</Label>
+        <Textarea
+          id={id("roteiro")}
+          name="roteiro"
+          rows={8}
+          defaultValue={post?.roteiro ?? ""}
+          placeholder="Texto do roteiro. Não aparece na grade: só quando alguém clica no post."
+          className="text-sm leading-relaxed"
+        />
+      </div>
     </div>
   );
 }

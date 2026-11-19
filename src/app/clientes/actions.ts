@@ -169,6 +169,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
     rede,
     formato,
     status,
+    roteiro: String(formData.get("roteiro") ?? "").trim() || null,
     data,
     horario,
     cor,
@@ -204,6 +205,7 @@ export async function atualizarEventoCalendario(eventId: string, clientId: strin
       cor: String(formData.get("cor") ?? "") || null,
       responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
       status: statusValido(formData.get("status")),
+      roteiro: String(formData.get("roteiro") ?? "").trim() || null,
     })
     .eq("id", eventId);
 
