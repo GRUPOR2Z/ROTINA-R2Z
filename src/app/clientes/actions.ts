@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { normalizarValorFormulario, type TipoCampoPropriedade } from "@/lib/client-properties";
+import { STATUS_POST } from "@/lib/conteudo";
 
 export async function criarCliente(formData: FormData) {
   const supabase = await createClient();
@@ -159,6 +160,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
   const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
   const rede = String(formData.get("rede") ?? "") || null;
   const formato = String(formData.get("formato") ?? "") || null;
+  const status = statusValido(formData.get("status"));
 
   await supabase.from("calendar_events").insert({
     client_id: clientId,
@@ -166,6 +168,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
     tipo,
     rede,
     formato,
+    status,
     data,
     horario,
     cor,
@@ -174,6 +177,38 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
   });
 
   revalidatePath(`/clientes/${clientId}`);
+}
+
+function statusValido(valor: FormDataEntryValue | null) {
+  const v = String(valor ?? "");
+  return STATUS_POST.some((s) => s.valor === v) ? v : "planejado";
+}
+
+/** Edita um post do calendario (equipe). Voltar o status para algo
+ * diferente de "ajustes"/"aprovado" mantem o comentario do cliente como
+ * historico ate a proxima resposta. */
+export async function atualizarEventoCalendario(eventId: string, clientId: string, formData: FormData) {
+  const supabase = await createClient();
+  const titulo = String(formData.get("titulo") ?? "").trim();
+  const data = String(formData.get("data") ?? "");
+  if (!titulo || !data) return;
+
+  await supabase
+    .from("calendar_events")
+    .update({
+      titulo,
+      data,
+      horario: String(formData.get("horario") ?? "") || null,
+      rede: String(formData.get("rede") ?? "") || null,
+      formato: String(formData.get("formato") ?? "") || null,
+      cor: String(formData.get("cor") ?? "") || null,
+      responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
+      status: statusValido(formData.get("status")),
+    })
+    .eq("id", eventId);
+
+  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/portal/${clientId}`);
 }
 
 export async function excluirEventoCalendario(eventId: string, clientId: string) {

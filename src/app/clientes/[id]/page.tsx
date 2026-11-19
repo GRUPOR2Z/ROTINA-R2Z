@@ -125,7 +125,7 @@ export default async function ClientePage({
 
         <ClientTabs
           abaInicial={tab ?? "conteudo"}
-          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} editavel />}
+          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} modo="equipe" />}
           tarefas={
             <div className="flex flex-col gap-4">
               <div className="flex justify-end">
