@@ -7,12 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
+import { AuthShell } from "@/components/layout/auth-shell";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -58,36 +53,24 @@ export default function SignupPage() {
 
   if (aguardandoConfirmacao) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <h1 className="font-heading text-base font-medium leading-snug">
-              Quase lá
-            </h1>
-            <CardDescription>
-              Enviamos um e-mail de confirmação para {email}. Clique no link
-              antes de entrar.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <AuthShell
+        title="Quase lá"
+        description={<>Enviamos um e-mail de confirmação para {email}. Clique no link antes de entrar.</>}
+      >
+        <Link href="/login" className="text-sm font-medium text-brand-700 hover:underline">
+          Voltar para o login
+        </Link>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <h1 className="font-heading text-base font-medium leading-snug">
-            Criar conta — Grupo R2Z OS
-          </h1>
-          <CardDescription>Seu perfil é criado automaticamente.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <AuthShell title="Criar conta" description="Seu perfil é criado automaticamente.">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="nome">Nome</Label>
               <Input
+                className="h-10 bg-white"
                 id="nome"
                 autoComplete="name"
                 required
@@ -98,6 +81,7 @@ export default function SignupPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
+                className="h-10 bg-white"
                 id="email"
                 type="email"
                 autoComplete="email"
@@ -109,6 +93,7 @@ export default function SignupPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="senha">Senha</Label>
               <Input
+                className="h-10 bg-white"
                 id="senha"
                 type="password"
                 autoComplete="new-password"
@@ -123,18 +108,16 @@ export default function SignupPage() {
                 {erro}
               </p>
             )}
-            <Button type="submit" disabled={carregando} className="mt-2">
+            <Button type="submit" disabled={carregando} className="mt-2 h-10 w-full">
               {carregando ? "Criando..." : "Criar conta"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Já tem conta?{" "}
-            <Link href="/login" className="text-foreground underline">
+            <Link href="/login" className="font-medium text-brand-700 hover:underline">
               Entrar
             </Link>
           </p>
-        </CardContent>
-      </Card>
-    </div>
+    </AuthShell>
   );
 }

@@ -7,12 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
+import { AuthShell } from "@/components/layout/auth-shell";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,36 +22,36 @@ export default function LoginPage() {
     setCarregando(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
     });
 
-    setCarregando(false);
-
     if (error) {
+      setCarregando(false);
       setErro("E-mail ou senha incorretos.");
       return;
     }
 
-    router.push("/");
+    // login de cliente vai direto para o portal
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("roles(nome)")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    const papel = (perfil?.roles as unknown as { nome: string } | null)?.nome;
+
+    router.push(papel === "cliente" ? "/portal" : "/");
     router.refresh();
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <h1 className="font-heading text-base font-medium leading-snug">
-            Grupo R2Z OS
-          </h1>
-          <CardDescription>Entre com sua conta para continuar.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <AuthShell title="Entrar" description="Acesse sua conta para continuar">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
+                className="h-10 bg-white"
                 id="email"
                 type="email"
                 autoComplete="email"
@@ -68,6 +63,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="senha">Senha</Label>
               <Input
+                className="h-10 bg-white"
                 id="senha"
                 type="password"
                 autoComplete="current-password"
@@ -81,18 +77,16 @@ export default function LoginPage() {
                 {erro}
               </p>
             )}
-            <Button type="submit" disabled={carregando} className="mt-2">
+            <Button type="submit" disabled={carregando} className="mt-2 h-10 w-full">
               {carregando ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Não tem conta?{" "}
-            <Link href="/signup" className="text-foreground underline">
+            <Link href="/signup" className="font-medium text-brand-700 hover:underline">
               Criar conta
             </Link>
           </p>
-        </CardContent>
-      </Card>
-    </div>
+    </AuthShell>
   );
 }
