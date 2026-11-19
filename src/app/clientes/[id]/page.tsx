@@ -6,14 +6,10 @@ import { ClientPropertiesPanel } from "@/components/clientes/properties-panel";
 import { ClientNameEditor } from "@/components/clientes/client-name-editor";
 import { ClientTasksBoard } from "@/components/clientes/tasks-board";
 import { ClientCalendar } from "@/components/clientes/calendar";
-import { ClientProcessesTab } from "@/components/clientes/processes-tab";
+import { ClientMaterials } from "@/components/clientes/materials-tab";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getClienteComPropriedades,
-  getProcessosDoCliente,
-  getProcessosParaVincular,
-} from "@/lib/clients-data";
+import { getClienteComPropriedades } from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
 import { getCurrentProfile } from "@/lib/current-profile";
 import { arquivarCliente, reabrirCliente, excluirCliente } from "../actions";
@@ -26,10 +22,10 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; mes?: string; acesso?: string; erro_acesso?: string }>;
+  searchParams: Promise<{ tab?: string; mes?: string; acesso?: string; erro_acesso?: string; erro_material?: string }>;
 }) {
   const { id } = await params;
-  const { tab, mes, acesso, erro_acesso } = await searchParams;
+  const { tab, mes, acesso, erro_acesso, erro_material } = await searchParams;
 
   const dados = await getClienteComPropriedades(id);
   if (!dados) notFound();
@@ -39,14 +35,12 @@ export default async function ClientePage({
   const perfil = await getCurrentProfile();
 
   const supabase = await createClient();
-  const [{ data: tarefas }, processosVinculados, processosDisponiveis, { data: acessos }] = await Promise.all([
+  const [{ data: tarefas }, { data: acessos }] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, titulo, status, prazo, horario, cor")
       .eq("client_id", id)
       .order("prazo", { ascending: true, nullsFirst: false }),
-    getProcessosDoCliente(id),
-    getProcessosParaVincular(id),
     supabase
       .from("client_members")
       .select("profile_id, criado_em, profiles!client_members_profile_id_fkey(nome, email)")
@@ -116,10 +110,19 @@ export default async function ClientePage({
                 </div>
               }
               processos={
-                <ClientProcessesTab
+                <ClientMaterials
                   clientId={cliente.id}
-                  vinculados={processosVinculados}
-                  disponiveis={processosDisponiveis}
+                  tipo="processo"
+                  editavel
+                  erro={tab === "processos" ? erro_material : undefined}
+                />
+              }
+              roteiros={
+                <ClientMaterials
+                  clientId={cliente.id}
+                  tipo="roteiro"
+                  editavel
+                  erro={tab === "roteiros" ? erro_material : undefined}
                 />
               }
             />

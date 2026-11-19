@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   experimental: {
     serverActions: {
-      // padrao (1mb) e pequeno demais para importar um .docx/.pdf
-      bodySizeLimit: "10mb",
+      // padrao (1mb) e pequeno demais para importar .docx/.pdf e enviar
+      // os PDFs de roteiro (ate 20 MB)
+      bodySizeLimit: "25mb",
     },
   },
 };

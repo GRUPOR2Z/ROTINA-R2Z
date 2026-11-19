@@ -2,16 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/current-profile";
-
-/** Mostra/esconde um processo vinculado no portal do cliente. */
-export async function alternarVisibilidadeProcesso(vinculoId: string, clientId: string, visivel: boolean) {
-  const supabase = await createClient();
-  await supabase.from("process_clients").update({ visivel_ao_cliente: visivel }).eq("id", vinculoId);
-  revalidatePath(`/clientes/${clientId}`);
-}
 
 function voltar(clientId: string, params: Record<string, string>): never {
   const q = new URLSearchParams(params).toString();

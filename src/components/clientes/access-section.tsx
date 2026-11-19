@@ -31,7 +31,7 @@ export function ClientAccessSection({
         <div>
           <h2 className="font-semibold text-brand-900">Acesso do cliente</h2>
           <p className="text-sm text-muted-foreground">
-            O cliente entra com login próprio e vê só o calendário de conteúdo e os processos visíveis. Não edita nada
+            O cliente entra com login próprio e vê só o calendário de conteúdo, os processos e os roteiros dele. Não edita nada
             nem vê o resto do sistema.
           </p>
         </div>
