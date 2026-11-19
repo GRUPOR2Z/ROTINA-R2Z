@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  CalendarDays,
   Gavel,
   GraduationCap,
   KanbanSquare,
@@ -45,6 +46,7 @@ const GRUPOS: Grupo[] = [
       { href: "/rotinas", label: "Rotinas", icon: ListChecks },
       { href: "/projetos", label: "Projetos", icon: KanbanSquare },
       { href: "/clientes", label: "Clientes", icon: Building2 },
+      { href: "/conteudo", label: "Conteúdo", icon: CalendarDays },
     ],
   },
   {
