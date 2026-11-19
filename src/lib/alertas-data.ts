@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth";
 
 /** Roda a geracao (com trava de 5 min no banco) e devolve os alertas
  * visiveis pra pessoa, ja sem os tipos que ela silenciou. Falha na
  * geracao nao derruba a pagina: o sistema funciona mesmo se essa
  * parte estiver indisponivel (Doc. 1 §6). */
 export async function getAlertasDoUsuario(opts: { incluirArquivados?: boolean; limite?: number } = {}) {
+  const user = await getAuthUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) return { alertas: [], silenciados: [] as string[], erroGeracao: false };
 
   const { error: erroGeracao } = await supabase.rpc("gerar_alertas");
@@ -36,10 +35,8 @@ export async function getAlertasDoUsuario(opts: { incluirArquivados?: boolean; l
 
 /** Contador da barra lateral: so leitura, nao dispara a geracao. */
 export async function contarAlertasNaoLidos() {
+  const user = await getAuthUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) return 0;
 
   const { count } = await supabase

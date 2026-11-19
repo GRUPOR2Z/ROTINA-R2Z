@@ -26,10 +26,10 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Necessário: renova o token e mantém a sessão sincronizada em cada
-  // requisição. Não remover nem adiar essa chamada.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // requisição. Não remover nem adiar essa chamada. getClaims() valida o
+  // JWT localmente (chave ES256), sem ida ao servidor de Auth.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { NavLinks, SettingsLink } from "@/components/layout/nav-links";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import { LogOut } from "lucide-react";
+import { getCurrentProfile } from "@/lib/current-profile";
+import { Sidebar } from "@/components/layout/nav-links";
 import { contarAlertasNaoLidos } from "@/lib/alertas-data";
 
 function iniciais(nome: string | null | undefined, email: string | null | undefined) {
@@ -11,61 +11,40 @@ function iniciais(nome: string | null | undefined, email: string | null | undefi
 }
 
 export async function AppShell({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("nome, email, cargo")
-        .eq("id", user.id)
-        .maybeSingle()
-    : { data: null };
-  const alertasNaoLidos = user ? await contarAlertasNaoLidos() : 0;
+  // em paralelo; o perfil e' o mesmo (cache) que a pagina usa
+  const [profile, alertasNaoLidos] = await Promise.all([getCurrentProfile(), contarAlertasNaoLidos()]);
+  // login de cliente so usa o portal (o RLS ja esconde os dados; isso
+  // so evita mostrar as telas internas vazias)
+  if (profile?.papel === "cliente") redirect("/portal");
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col justify-between border-r bg-muted/20 p-4">
-        <div className="flex flex-col gap-6">
-          <div>
-            <p className="text-sm font-semibold">Grupo R2Z OS</p>
-            <p className="text-xs text-muted-foreground">Gestão operacional</p>
-          </div>
-          <form action="/busca" role="search">
-            <input
-              name="q"
-              type="search"
-              placeholder="Buscar…"
-              aria-label="Busca global"
-              className="h-8 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            />
-          </form>
-          <NavLinks contadores={{ "/alertas": alertasNaoLidos }} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <SettingsLink />
-
-          <div className="flex items-center gap-3 border-t pt-4">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{iniciais(profile?.nome, profile?.email)}</AvatarFallback>
-            </Avatar>
+    <div className="min-h-screen bg-background lg:flex">
+      <Sidebar
+        contadores={{ "/alertas": alertasNaoLidos }}
+        usuario={
+          <div className="flex items-center gap-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-mint text-xs font-semibold text-brand-950">
+              {iniciais(profile?.nome, profile?.email)}
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{profile?.nome || user?.email}</p>
-              <p className="truncate text-xs text-muted-foreground">{profile?.cargo || "—"}</p>
+              <p className="truncate text-sm font-medium text-white">{profile?.nome || profile?.email}</p>
+              <p className="truncate text-xs text-brand-300">{profile?.cargo || "—"}</p>
             </div>
             <form action="/logout" method="post">
-              <Button type="submit" variant="ghost" size="sm">
-                Sair
-              </Button>
+              <button
+                type="submit"
+                title="Sair"
+                aria-label="Sair"
+                className="rounded-md p-1.5 text-brand-300 hover:bg-white/10 hover:text-white"
+              >
+                <LogOut size={16} />
+              </button>
             </form>
           </div>
-        </div>
-      </aside>
+        }
+      />
 
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

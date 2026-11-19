@@ -1,13 +1,14 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth";
 
-export async function getCurrentProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+/** Perfil de quem esta logado. cache(): o menu lateral e a pagina
+ * compartilham a mesma consulta dentro de uma requisicao. */
+export const getCurrentProfile = cache(async () => {
+  const user = await getAuthUser();
   if (!user) return null;
 
+  const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, nome, email, cargo, area_id, roles(nome)")
@@ -25,4 +26,4 @@ export async function getCurrentProfile() {
     isGestorOuAdmin: roleNome === "administrador" || roleNome === "gestor",
     papel: roleNome ?? null,
   };
-}
+});
