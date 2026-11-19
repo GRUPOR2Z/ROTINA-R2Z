@@ -106,6 +106,7 @@ export async function getBadgesPorCliente() {
 
 type ProcessoVinculado = {
   id: string;
+  visivel_ao_cliente: boolean;
   processes: {
     id: string;
     titulo: string;
@@ -122,7 +123,7 @@ export async function getProcessosDoCliente(clientId: string) {
   const { data } = await supabase
     .from("process_clients")
     .select(
-      "id, processes(id, titulo, status, areas(nome), profiles!processes_responsavel_id_fkey(nome, email))",
+      "id, visivel_ao_cliente, processes(id, titulo, status, areas(nome), profiles!processes_responsavel_id_fkey(nome, email))",
     )
     .eq("client_id", clientId)
     .order("vinculado_em", { ascending: false })

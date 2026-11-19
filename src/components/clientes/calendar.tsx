@@ -15,24 +15,30 @@ import {
   paramDoMes,
   proximoMes,
 } from "@/lib/calendar";
+import { FORMATOS, REDES, rotuloRedeFormato } from "@/lib/conteudo";
 import { infoCor } from "@/lib/task-colors";
 import { criarEventoCalendario, excluirEventoCalendario } from "@/app/clientes/actions";
 
 type Membro = { id: string; nome: string | null; email: string | null };
 
-/** Calendario mensal da aba Conteudo -- mesma grade/navegacao de
- * `/rotinas/calendario`, só que sobre `calendar_events` filtrado por
- * `client_id` em vez de `tasks`. Server Component: a navegação de mês
- * é feita por link (recarrega a página), a troca de aba continua sem
- * perder estado porque só a URL muda, não o componente `ClientTabs`. */
+/** Calendário de conteúdo do cliente (calendar_events filtrado por
+ * client_id). Usado em dois lugares:
+ *  - na página interna do cliente (aba Conteúdo), com `editavel`;
+ *  - no portal do cliente (/portal/[id]), só leitura.
+ * Server Component: a navegação de mês é por link (?mes=AAAA-MM). */
 export async function ClientCalendar({
   clientId,
   mes,
-  membros,
+  membros = [],
+  editavel = false,
+  aba = "conteudo",
 }: {
   clientId: string;
   mes: string | undefined;
-  membros: Membro[];
+  membros?: Membro[];
+  editavel?: boolean;
+  /** valor de ?tab= mantido nos links de mês */
+  aba?: string;
 }) {
   const hoje = new Date();
   const [ano, mesNumero] = (mes ?? paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1))
@@ -46,10 +52,11 @@ export async function ClientCalendar({
   const supabase = await createClient();
   const { data: eventos } = await supabase
     .from("calendar_events")
-    .select("id, titulo, tipo, data, horario, cor")
+    .select("id, titulo, tipo, data, horario, cor, rede, formato")
     .eq("client_id", clientId)
     .gte("data", inicio)
     .lte("data", fim)
+    .order("data")
     .order("horario", { ascending: true, nullsFirst: false })
     .order("titulo");
 
@@ -64,12 +71,15 @@ export async function ClientCalendar({
   const proximo = proximoMes(ano, mesNumero);
   const mesAtualParam = paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1);
   const hojeKey = dateKey(hoje);
-  const linkMes = (param: string) => `?tab=conteudo&mes=${param}`;
+  const linkMes = (param: string) => `?tab=${aba}&mes=${param}`;
+  // lista abaixo da grade: só os posts do mês exibido (a grade mostra
+  // também os dias de borda dos meses vizinhos)
+  const doMes = (eventos ?? []).filter((e) => Number(e.data.slice(5, 7)) === mesNumero);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-lg font-semibold text-brand-900">
           {MESES[mesNumero - 1]} {ano}
         </h3>
         <div className="flex gap-2">
@@ -85,10 +95,10 @@ export async function ClientCalendar({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="grid min-w-[640px] grid-cols-7 gap-px overflow-hidden rounded-lg border bg-border text-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <div className="grid min-w-[720px] grid-cols-7 gap-px bg-border text-sm">
           {DIAS_SEMANA.map((d) => (
-            <div key={d} className="bg-muted/50 px-2 py-1.5 text-center text-xs font-medium text-muted-foreground">
+            <div key={d} className="bg-brand-50 px-2 py-2 text-center text-xs font-medium text-brand-700">
               {d}
             </div>
           ))}
@@ -100,28 +110,35 @@ export async function ClientCalendar({
             const eventosDoDia = porDia.get(key) ?? [];
 
             return (
-              <div key={key} className={`flex min-h-[80px] flex-col gap-1 bg-background p-1.5 ${noMesAtual ? "" : "opacity-40"}`}>
+              <div key={key} className={`flex min-h-[104px] flex-col gap-1 bg-card p-1.5 ${noMesAtual ? "" : "opacity-40"}`}>
                 <span
                   className={
                     ehHoje
                       ? "flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground"
-                      : "text-xs text-muted-foreground"
+                      : "px-0.5 text-xs text-muted-foreground"
                   }
                 >
                   {dia.getDate()}
                 </span>
-                <div className="flex flex-col gap-0.5">
-                  {eventosDoDia.slice(0, 3).map((evento) => (
-                    <span
-                      key={evento.id}
-                      className={`truncate rounded px-1 py-0.5 text-[11px] ${infoCor(evento.cor)?.chip ?? "bg-primary/10 text-primary"}`}
-                      title={evento.titulo}
-                    >
-                      {evento.horario ? `${evento.horario.slice(0, 5)} · ${evento.titulo}` : evento.titulo}
-                    </span>
-                  ))}
+                <div className="flex flex-col gap-1">
+                  {eventosDoDia.slice(0, 3).map((evento) => {
+                    const meta = rotuloRedeFormato(evento.rede, evento.formato);
+                    return (
+                      <div
+                        key={evento.id}
+                        className={`rounded-md px-1.5 py-1 text-[11px] leading-tight ${infoCor(evento.cor)?.chip ?? "bg-brand-100 text-brand-900"}`}
+                        title={[evento.titulo, meta].filter(Boolean).join(" — ")}
+                      >
+                        <p className="truncate font-medium">
+                          {evento.horario ? `${evento.horario.slice(0, 5)} · ` : ""}
+                          {evento.titulo}
+                        </p>
+                        {meta && <p className="truncate opacity-75">{meta}</p>}
+                      </div>
+                    );
+                  })}
                   {eventosDoDia.length > 3 && (
-                    <span className="text-[11px] text-muted-foreground">+{eventosDoDia.length - 3} mais</span>
+                    <span className="px-0.5 text-[11px] text-muted-foreground">+{eventosDoDia.length - 3} mais</span>
                   )}
                 </div>
               </div>
@@ -130,74 +147,121 @@ export async function ClientCalendar({
         </div>
       </div>
 
-      <details className="rounded-lg border p-3">
-        <summary className="cursor-pointer text-sm font-medium">Novo evento</summary>
-        <form action={criarEventoCalendario.bind(null, clientId)} className="mt-3 flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="titulo-evento">Título</Label>
-              <Input id="titulo-evento" name="titulo" required />
+      {editavel && (
+        <details className="rounded-xl border border-border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-medium text-brand-900">+ Novo post no calendário</summary>
+          <form action={criarEventoCalendario.bind(null, clientId)} className="mt-4 flex flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label htmlFor="titulo-evento">Tema do conteúdo</Label>
+                <Input id="titulo-evento" name="titulo" required placeholder="ex: 3 erros ao escolher um plano de saúde" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="rede-evento">Rede social</Label>
+                <Select name="rede">
+                  <SelectTrigger id="rede-evento" className="w-full">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REDES.map((r) => (
+                      <SelectItem key={r.valor} value={r.valor}>
+                        {r.rotulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="formato-evento">Formato</Label>
+                <Select name="formato">
+                  <SelectTrigger id="formato-evento" className="w-full">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATOS.map((f) => (
+                      <SelectItem key={f.valor} value={f.valor}>
+                        {f.rotulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="data-evento">Data de postagem</Label>
+                <Input id="data-evento" name="data" type="date" required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="horario-evento">Horário (opcional)</Label>
+                <Input id="horario-evento" name="horario" type="time" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cor-evento">Cor</Label>
+                <ColorSelect />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="responsavel-evento">Responsável (interno)</Label>
+                <Select name="responsavel_id">
+                  <SelectTrigger id="responsavel-evento" className="w-full">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {membros.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.nome || m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="tipo-evento">Tipo</Label>
-              <Input id="tipo-evento" name="tipo" placeholder="ex: gravação, reunião" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="data-evento">Data</Label>
-              <Input id="data-evento" name="data" type="date" required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="horario-evento">Horário (opcional)</Label>
-              <Input id="horario-evento" name="horario" type="time" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cor-evento">Cor</Label>
-              <ColorSelect />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="responsavel-evento">Responsável</Label>
-              <Select name="responsavel_id">
-                <SelectTrigger id="responsavel-evento" className="w-full">
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {membros.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.nome || m.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <SubmitButton size="sm" className="self-start" pendingText="Criando…">
-            Criar evento
-          </SubmitButton>
-        </form>
-      </details>
-
-      {(eventos ?? []).length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-semibold text-muted-foreground">Eventos deste mês</h4>
-          {(eventos ?? []).map((evento) => (
-            <div key={evento.id} className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm">
-              <span className="inline-flex items-center gap-1.5">
-                {evento.cor && (
-                  <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${infoCor(evento.cor)?.dot}`} />
-                )}
-                {new Date(`${evento.data}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                {evento.horario && ` · ${evento.horario.slice(0, 5)}`} — {evento.titulo}
-                {evento.tipo && <span className="ml-1 text-muted-foreground">({evento.tipo})</span>}
-              </span>
-              <form action={excluirEventoCalendario.bind(null, evento.id, clientId)}>
-                <Button type="submit" size="sm" variant="ghost" className="text-destructive">
-                  Excluir
-                </Button>
-              </form>
-            </div>
-          ))}
-        </div>
+            <SubmitButton size="sm" className="self-start" pendingText="Salvando…">
+              Adicionar ao calendário
+            </SubmitButton>
+          </form>
+        </details>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h4 className="text-sm font-semibold text-brand-900">
+          Posts de {MESES[mesNumero - 1].toLowerCase()} {doMes.length > 0 && <span className="font-normal text-muted-foreground">({doMes.length})</span>}
+        </h4>
+        {doMes.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
+            Nenhum post programado para este mês.
+          </p>
+        ) : (
+          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+            {doMes.map((evento) => {
+              const data = new Date(`${evento.data}T00:00:00`);
+              const meta = rotuloRedeFormato(evento.rede, evento.formato);
+              return (
+                <div key={evento.id} className="flex items-center gap-4 p-3 text-sm">
+                  <div className="w-14 shrink-0 text-center">
+                    <p className="text-lg leading-none font-semibold text-brand-900">{data.getDate()}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground uppercase">
+                      {data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+                    </p>
+                  </div>
+                  <span className={`h-9 w-1 shrink-0 rounded-full ${infoCor(evento.cor)?.dot ?? "bg-brand-300"}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">{evento.titulo}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {[evento.horario?.slice(0, 5), meta, evento.tipo].filter(Boolean).join(" · ") || "Dia inteiro"}
+                    </p>
+                  </div>
+                  {editavel && (
+                    <form action={excluirEventoCalendario.bind(null, evento.id, clientId)}>
+                      <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+                        Excluir
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

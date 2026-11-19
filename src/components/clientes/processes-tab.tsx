@@ -5,6 +5,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { vincularProcesso, desvincularProcesso } from "@/app/clientes/actions";
+import { alternarVisibilidadeProcesso } from "@/app/clientes/acesso-actions";
+import { Eye, EyeOff } from "lucide-react";
 
 type Processo = {
   id: string;
@@ -14,7 +16,7 @@ type Processo = {
   profiles: { nome: string | null; email: string | null } | null;
 };
 
-type Vinculo = { id: string; processes: Processo | null };
+type Vinculo = { id: string; visivel_ao_cliente: boolean; processes: Processo | null };
 
 /** Aba Processos do cliente: só mostra o que está vinculado via
  * `process_clients` -- o processo em si continua vivendo só na
@@ -87,6 +89,18 @@ export function ClientProcessesTab({
                     )}
                   </div>
                 </div>
+                <form action={alternarVisibilidadeProcesso.bind(null, vinculo.id, clientId, !vinculo.visivel_ao_cliente)}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    title={vinculo.visivel_ao_cliente ? "O cliente vê este processo no portal. Clique para esconder." : "Oculto no portal do cliente. Clique para mostrar."}
+                    className={vinculo.visivel_ao_cliente ? "text-brand-700" : "text-muted-foreground"}
+                  >
+                    {vinculo.visivel_ao_cliente ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {vinculo.visivel_ao_cliente ? "Visível ao cliente" : "Oculto do cliente"}
+                  </Button>
+                </form>
                 <form action={desvincularProcesso.bind(null, vinculo.id, clientId)}>
                   <Button type="submit" size="sm" variant="ghost">
                     Desvincular

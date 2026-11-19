@@ -157,11 +157,15 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
   const horario = String(formData.get("horario") ?? "") || null;
   const cor = String(formData.get("cor") ?? "") || null;
   const responsavelId = String(formData.get("responsavel_id") ?? "") || null;
+  const rede = String(formData.get("rede") ?? "") || null;
+  const formato = String(formData.get("formato") ?? "") || null;
 
   await supabase.from("calendar_events").insert({
     client_id: clientId,
     titulo,
     tipo,
+    rede,
+    formato,
     data,
     horario,
     cor,
@@ -194,7 +198,8 @@ export async function vincularProcesso(clientId: string, formData: FormData) {
   await supabase
     .from("process_clients")
     .upsert(
-      { process_id: processId, client_id: clientId, vinculado_por: user.id },
+      // visivel no portal do cliente por padrao; da para esconder na aba Processos
+      { process_id: processId, client_id: clientId, vinculado_por: user.id, visivel_ao_cliente: true },
       { onConflict: "process_id,client_id", ignoreDuplicates: true },
     );
 

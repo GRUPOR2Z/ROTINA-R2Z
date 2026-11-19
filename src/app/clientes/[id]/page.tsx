@@ -19,6 +19,8 @@ import {
 import { getAreasEMembros } from "@/lib/lookups";
 import { getCurrentProfile } from "@/lib/current-profile";
 import { arquivarCliente, reabrirCliente, excluirCliente, enviarFotoCliente } from "../actions";
+import { ClientAccessSection } from "@/components/clientes/access-section";
+import { ExternalLink } from "lucide-react";
 
 function iniciais(nome: string) {
   return nome.trim().slice(0, 2).toUpperCase();
@@ -29,10 +31,10 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; mes?: string }>;
+  searchParams: Promise<{ tab?: string; mes?: string; acesso?: string; erro_acesso?: string }>;
 }) {
   const { id } = await params;
-  const { tab, mes } = await searchParams;
+  const { tab, mes, acesso, erro_acesso } = await searchParams;
 
   const dados = await getClienteComPropriedades(id);
   if (!dados) notFound();
@@ -42,7 +44,7 @@ export default async function ClientePage({
   const perfil = await getCurrentProfile();
 
   const supabase = await createClient();
-  const [{ data: tarefas }, processosVinculados, processosDisponiveis] = await Promise.all([
+  const [{ data: tarefas }, processosVinculados, processosDisponiveis, { data: acessos }] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, titulo, status, prazo, horario, cor")
@@ -50,6 +52,11 @@ export default async function ClientePage({
       .order("prazo", { ascending: true, nullsFirst: false }),
     getProcessosDoCliente(id),
     getProcessosParaVincular(id),
+    supabase
+      .from("client_members")
+      .select("profile_id, criado_em, profiles!client_members_profile_id_fkey(nome, email)")
+      .eq("client_id", id)
+      .order("criado_em"),
   ]);
 
   return (
@@ -83,6 +90,10 @@ export default async function ClientePage({
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+            <Link href={`/portal/${cliente.id}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+              <ExternalLink size={14} /> Ver como cliente
+            </Link>
             {!cliente.arquivado ? (
               <form action={arquivarCliente.bind(null, cliente.id)}>
                 <Button type="submit" size="sm" variant="outline">
@@ -96,6 +107,7 @@ export default async function ClientePage({
                 </Button>
               </form>
             )}
+            </div>
           </div>
         </div>
 
@@ -113,7 +125,7 @@ export default async function ClientePage({
 
         <ClientTabs
           abaInicial={tab ?? "conteudo"}
-          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} />}
+          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} editavel />}
           tarefas={
             <div className="flex flex-col gap-4">
               <div className="flex justify-end">
@@ -131,6 +143,17 @@ export default async function ClientePage({
               disponiveis={processosDisponiveis}
             />
           }
+        />
+
+        <ClientAccessSection
+          clientId={cliente.id}
+          acessos={(acessos ?? []).map((a) => {
+            const p = a.profiles as unknown as { nome: string | null; email: string | null } | null;
+            return { profileId: a.profile_id, nome: p?.nome ?? null, email: p?.email ?? null };
+          })}
+          podeAdministrar={perfil?.isAdmin ?? false}
+          aviso={acesso === "criado" ? "Acesso criado. Envie o e-mail e a senha ao cliente." : acesso === "removido" ? "Acesso removido." : undefined}
+          erro={erro_acesso}
         />
 
         <form action={excluirCliente.bind(null, cliente.id)} className="border-t pt-4">
