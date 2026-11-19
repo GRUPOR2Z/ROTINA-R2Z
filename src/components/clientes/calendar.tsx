@@ -17,8 +17,16 @@ import {
   paramDoMes,
   proximoMes,
 } from "@/lib/calendar";
-import { FORMATOS, REDES, STATUS_POST, infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
-import { CORES_TAREFA, infoCor } from "@/lib/task-colors";
+import {
+  FORMATOS,
+  LEGENDA_FORMATOS,
+  REDES,
+  STATUS_POST,
+  alertaStatus,
+  corDoFormato,
+  infoStatus,
+  rotuloRedeFormato,
+} from "@/lib/conteudo";
 import { atualizarEventoCalendario, criarEventoCalendario, excluirEventoCalendario } from "@/app/clientes/actions";
 import { responderPost } from "@/app/portal/actions";
 
@@ -204,14 +212,16 @@ export async function ClientCalendar({
                   {eventosDoDia.slice(0, 3).map((evento) => {
                     const meta = rotuloRedeFormato(evento.rede, evento.formato);
                     const st = infoStatus(evento.status);
+                    const alerta = alertaStatus(evento.status);
                     return (
                       <PostTrigger
                         key={evento.id}
                         id={evento.id}
-                        className={`w-full cursor-pointer rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition hover:brightness-95 hover:ring-1 hover:ring-brand-600/30 ${st.chip}`}
+                        className={`w-full cursor-pointer rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition hover:brightness-95 hover:ring-1 hover:ring-brand-600/30 ${corDoFormato(evento.formato).chip}`}
                         title={[evento.titulo, meta, st.rotulo].filter(Boolean).join(" — ")}
                       >
                         <span className="flex items-center gap-1">
+                          {alerta && <span className={`size-1.5 shrink-0 rounded-full ${alerta.dot}`} aria-label={alerta.rotulo} />}
                           <span className="truncate font-medium">
                             {evento.horario ? `${evento.horario.slice(0, 5)} · ` : ""}
                             {evento.titulo}
@@ -233,11 +243,17 @@ export async function ClientCalendar({
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-        {STATUS_POST.map((s) => (
-          <span key={s.valor} className="inline-flex items-center gap-1.5">
-            <span className={`size-2.5 rounded-full ${s.dot}`} /> {s.rotulo}
+        {LEGENDA_FORMATOS.map((f) => (
+          <span key={f.valor} className="inline-flex items-center gap-1.5">
+            <span className={`size-2.5 rounded-full ${f.dot}`} /> {f.rotulo}
           </span>
         ))}
+        <span className="inline-flex items-center gap-1.5 border-l border-border pl-4">
+          <span className="size-1.5 rounded-full bg-amber-500" /> aguardando aprovação
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-red-500" /> ajustes pedidos
+        </span>
       </div>
 
       {editavel && (
@@ -291,7 +307,7 @@ function LinhaPost({ evento, modo }: { evento: Post; modo: "equipe" | "portal" }
           {data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
         </span>
       </span>
-      <span className={`mt-0.5 h-9 w-1 shrink-0 rounded-full ${evento.cor ? (infoCor(evento.cor)?.dot ?? st.dot) : st.dot}`} />
+      <span className={`mt-0.5 h-9 w-1 shrink-0 rounded-full ${corDoFormato(evento.formato).dot}`} />
       <span className="min-w-0 flex-1">
         <span className="block font-medium text-foreground">{evento.titulo}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
@@ -396,7 +412,7 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
       />
       <SelectField
         name="formato"
-        label="Formato"
+        label="Formato (define a cor no calendário)"
         options={FORMATOS.map((f) => ({ value: f.valor, label: f.rotulo }))}
         defaultValue={post?.formato}
         emptyLabel="—"
@@ -423,14 +439,6 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
         options={membros.map((m) => ({ value: m.id, label: m.nome || m.email || "—" }))}
         defaultValue={post?.responsavel_id}
         emptyLabel="Ninguém"
-        className="flex flex-col gap-1.5"
-      />
-      <SelectField
-        name="cor"
-        label="Cor da marcação (opcional)"
-        options={CORES_TAREFA.map((c) => ({ value: c.key, label: c.label }))}
-        defaultValue={post?.cor}
-        emptyLabel="Pela cor do status"
         className="flex flex-col gap-1.5"
       />
       <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -4,7 +4,7 @@ import { PrintButton } from "@/components/portal/print-button";
 import { getCurrentProfile } from "@/lib/current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { DIAS_SEMANA, MESES, dateKey, getMonthGrid, paramDoMes } from "@/lib/calendar";
-import { infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
+import { LEGENDA_FORMATOS, corDoFormato, infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
 
 /** Calendário do mês pronto para virar PDF (A4 deitado): grade + lista
  * de posts com a marca. Serve para a equipe e para o próprio cliente
@@ -87,7 +87,7 @@ export default async function ImprimirCalendarioPage({
               >
                 <span className={`text-[11px] ${doMes ? "text-[#64748b]" : "text-transparent"}`}>{dia.getDate()}</span>
                 {lista.map((p) => (
-                  <div key={p.id} className={`rounded px-1.5 py-1 text-[10px] leading-tight break-inside-avoid ${infoStatus(p.status).chip}`}>
+                  <div key={p.id} className={`rounded px-1.5 py-1 text-[10px] leading-tight break-inside-avoid ${corDoFormato(p.formato).chip}`}>
                     <p className="font-medium">
                       {p.horario ? `${p.horario.slice(0, 5)} · ` : ""}
                       {p.titulo}
@@ -98,6 +98,14 @@ export default async function ImprimirCalendarioPage({
               </div>
             );
           })}
+        </div>
+
+        <div className="-mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#64748b]">
+          {LEGENDA_FORMATOS.map((f) => (
+            <span key={f.valor} className="inline-flex items-center gap-1.5">
+              <span className={`size-2 rounded-full ${f.dot}`} /> {f.rotulo}
+            </span>
+          ))}
         </div>
 
         <section className="break-before-page">

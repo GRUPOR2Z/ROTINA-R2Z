@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getClientesAtivos } from "@/lib/clients-data";
 import { DIAS_SEMANA, MESES, dateKey, getMonthGrid, mesAnterior, paramDoMes, proximoMes } from "@/lib/calendar";
-import { STATUS_POST, infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
+import { STATUS_POST, alertaStatus, corDoFormato, infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
 
 type Post = {
   id: string;
@@ -151,9 +151,12 @@ export default async function ConteudoPage({
                       key={p.id}
                       href={`/clientes/${p.client_id}?tab=conteudo&mes=${p.data.slice(0, 7)}`}
                       title={[p.clients?.nome, p.titulo, rotuloRedeFormato(p.rede, p.formato), infoStatus(p.status).rotulo].filter(Boolean).join(" — ")}
-                      className={`block rounded-md px-1.5 py-1 text-[11px] leading-tight transition hover:brightness-95 ${infoStatus(p.status).chip}`}
+                      className={`block rounded-md px-1.5 py-1 text-[11px] leading-tight transition hover:brightness-95 ${corDoFormato(p.formato).chip}`}
                     >
-                      <p className="truncate font-semibold">{p.clients?.nome}</p>
+                      <p className="flex items-center gap-1 truncate font-semibold">
+                        {alertaStatus(p.status) && <span className={`size-1.5 shrink-0 rounded-full ${alertaStatus(p.status)!.dot}`} />}
+                        <span className="truncate">{p.clients?.nome}</span>
+                      </p>
                       <p className="truncate">{p.titulo}</p>
                     </Link>
                   ))}

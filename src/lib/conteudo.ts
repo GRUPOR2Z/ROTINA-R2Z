@@ -54,3 +54,33 @@ export type StatusPost = (typeof STATUS_POST)[number]["valor"];
 export function infoStatus(valor: string | null | undefined) {
   return STATUS_POST.find((s) => s.valor === valor) ?? STATUS_POST[0];
 }
+
+/** Cor de cada post no calendário = formato (Reels azul, Carrossel rosa,
+ * Stories marrom...). O status aparece como etiqueta, não como cor. */
+const CORES_FORMATO: Record<string, { chip: string; dot: string; rotulo: string }> = {
+  reels: { rotulo: "Reels", chip: "bg-blue-100 text-blue-900", dot: "bg-blue-500" },
+  carrossel: { rotulo: "Carrossel", chip: "bg-pink-100 text-pink-900", dot: "bg-pink-500" },
+  stories: { rotulo: "Stories", chip: "bg-[#efe3d8] text-[#5b3a24]", dot: "bg-[#8b5a3c]" },
+  video: { rotulo: "Vídeo", chip: "bg-violet-100 text-violet-900", dot: "bg-violet-500" },
+  post: { rotulo: "Post estático", chip: "bg-emerald-100 text-emerald-900", dot: "bg-emerald-500" },
+  shorts: { rotulo: "Shorts", chip: "bg-red-100 text-red-900", dot: "bg-red-500" },
+  live: { rotulo: "Live", chip: "bg-orange-100 text-orange-900", dot: "bg-orange-500" },
+};
+const COR_SEM_FORMATO = { rotulo: "Outro / sem formato", chip: "bg-slate-100 text-slate-700", dot: "bg-slate-400" };
+
+export function corDoFormato(formato: string | null | undefined) {
+  return (formato && CORES_FORMATO[formato]) || COR_SEM_FORMATO;
+}
+
+/** Legenda do calendário, na ordem das opções de formato. */
+export const LEGENDA_FORMATOS = [
+  ...FORMATOS.filter((f) => CORES_FORMATO[f.valor]).map((f) => ({ valor: f.valor, ...CORES_FORMATO[f.valor] })),
+  { valor: "outro", ...COR_SEM_FORMATO },
+];
+
+/** Status que merecem destaque na grade (bolinha no post). */
+export function alertaStatus(status: string | null | undefined) {
+  if (status === "em_aprovacao") return { dot: "bg-amber-500", rotulo: "Aguardando aprovação" };
+  if (status === "ajustes") return { dot: "bg-red-500", rotulo: "Ajustes pedidos" };
+  return null;
+}

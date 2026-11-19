@@ -202,7 +202,6 @@ export async function atualizarEventoCalendario(eventId: string, clientId: strin
       horario: String(formData.get("horario") ?? "") || null,
       rede: String(formData.get("rede") ?? "") || null,
       formato: String(formData.get("formato") ?? "") || null,
-      cor: String(formData.get("cor") ?? "") || null,
       responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
       status: statusValido(formData.get("status")),
       roteiro: String(formData.get("roteiro") ?? "").trim() || null,
