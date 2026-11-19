@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-/** Moldura das telas de entrada (login/cadastro): painel verde da marca à
+/** Moldura da tela de entrada (login): painel verde da marca à
  * esquerda e o formulário à direita — mesmo visual do dashboard comercial. */
 export function AuthShell({
   title,

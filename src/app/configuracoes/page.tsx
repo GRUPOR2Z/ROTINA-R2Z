@@ -10,7 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/current-profile";
 import { descreverAlteracoes } from "@/lib/audit";
 import { formatarDataHora, nomeDe, rel } from "@/lib/format";
-import { alternarArea, atualizarArea, atualizarMembro, criarArea } from "./actions";
+import { alternarArea, atualizarArea, atualizarMembro, convidarMembro, criarArea } from "./actions";
+import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { ErroBanner } from "@/components/layout/page-header";
 
 const ROTULO_PAPEL: Record<string, string> = {
   administrador: "Administrador",
@@ -33,7 +36,12 @@ const ROTULO_TABELA: Record<string, string> = {
   improvement_items: "Melhoria",
 };
 
-export default async function ConfiguracoesPage() {
+export default async function ConfiguracoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ erro?: string; ok?: string }>;
+}) {
+  const { erro, ok } = await searchParams;
   const eu = await getCurrentProfile();
   const supabase = await createClient();
 
@@ -49,7 +57,12 @@ export default async function ConfiguracoesPage() {
       .limit(20),
   ]);
 
-  const opcoesPapel = (papeis ?? []).map((p) => ({ value: p.id, label: ROTULO_PAPEL[p.nome] ?? p.nome }));
+  // logins de cliente sao geridos na pagina de cada cliente
+  const opcoesPapel = (papeis ?? [])
+    .filter((p) => p.nome !== "cliente")
+    .map((p) => ({ value: p.id, label: ROTULO_PAPEL[p.nome] ?? p.nome }));
+  const colaboradorId = (papeis ?? []).find((p) => p.nome === "colaborador")?.id ?? null;
+  const equipe = (membros ?? []).filter((m) => rel<{ nome: string }>(m.roles)?.nome !== "cliente");
   const areasAtivas = (areas ?? []).filter((a) => a.ativo);
 
   if (!eu?.isAdmin) {
@@ -107,12 +120,51 @@ export default async function ConfiguracoesPage() {
         </Section>
 
         <Section title="Usuários e permissões">
-          <p className="-mt-2 text-xs text-muted-foreground">
-            Novos usuários entram como Colaborador. Administrador gerencia tudo; Gestor acompanha áreas e relatórios;
-            Colaborador executa tarefas; Leitor só consulta.
+          <p id="equipe" className="-mt-2 scroll-mt-6 text-xs text-muted-foreground">
+            O cadastro é fechado: só quem um administrador adiciona aqui consegue entrar. Administrador gerencia tudo;
+            Gestor acompanha áreas e relatórios; Colaborador executa tarefas; Leitor só consulta. Usuário inativo perde o
+            acesso.
           </p>
-          <ul className="flex flex-col divide-y rounded-lg border">
-            {(membros ?? []).map((m) => {
+          {ok && (
+            <p role="status" className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+              {ok}
+            </p>
+          )}
+          <ErroBanner erro={erro} />
+          <details className="rounded-lg border bg-card p-3" open={Boolean(erro)}>
+            <summary className="cursor-pointer text-sm font-medium text-brand-900">+ Adicionar pessoa à equipe</summary>
+            <form action={convidarMembro} className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="novo-nome">Nome</Label>
+                <Input id="novo-nome" name="nome" required autoComplete="off" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="novo-email">E-mail</Label>
+                <Input id="novo-email" name="email" type="email" required autoComplete="off" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="novo-senha">Senha provisória (mín. 8)</Label>
+                <Input id="novo-senha" name="senha" type="text" minLength={8} required autoComplete="new-password" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="novo-cargo">Cargo</Label>
+                <Input id="novo-cargo" name="cargo" autoComplete="off" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Área</Label>
+                <SelectField name="area_id" options={opcoesAreas(areasAtivas)} emptyLabel="Sem área" placeholder="Área" className="" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Papel</Label>
+                <SelectField name="role_id" options={opcoesPapel} defaultValue={colaboradorId} className="" />
+              </div>
+              <SubmitButton size="sm" className="self-start sm:col-span-3" pendingText="Adicionando…">
+                Adicionar
+              </SubmitButton>
+            </form>
+          </details>
+          <ul className="flex flex-col divide-y rounded-lg border bg-card">
+            {equipe.map((m) => {
               const papel = rel<{ nome: string }>(m.roles)?.nome;
               const ehEu = m.id === eu.id;
               return (

@@ -9,7 +9,7 @@ import { Sidebar } from "@/components/layout/nav-links";
  * e o clique parece travado. */
 export default function Loading() {
   const pathname = usePathname();
-  if (["/login", "/signup", "/portal"].some((p) => pathname.startsWith(p))) return null;
+  if (["/login", "/portal"].some((p) => pathname.startsWith(p))) return null;
 
   return (
     <div className="min-h-screen bg-background lg:flex">

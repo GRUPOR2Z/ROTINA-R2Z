@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,11 +80,8 @@ export default function LoginPage() {
               {carregando ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Não tem conta?{" "}
-            <Link href="/signup" className="font-medium text-brand-700 hover:underline">
-              Criar conta
-            </Link>
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Não tem acesso? Peça a um administrador do Grupo R2Z.
           </p>
     </AuthShell>
   );
