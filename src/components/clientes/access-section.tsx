@@ -73,7 +73,7 @@ export function ClientAccessSection({
       {podeAdministrar ? (
         <details className="rounded-lg border border-border p-3" open={Boolean(erro)}>
           <summary className="cursor-pointer text-sm font-medium text-brand-900">+ Criar login para o cliente</summary>
-          <form action={criarAcessoCliente.bind(null, clientId)} className="mt-3 grid gap-3 sm:grid-cols-3">
+          <form action={criarAcessoCliente.bind(null, clientId)} className="mt-3 grid gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="acesso-nome">Nome</Label>
               <Input id="acesso-nome" name="nome" required autoComplete="off" />
@@ -86,7 +86,7 @@ export function ClientAccessSection({
               <Label htmlFor="acesso-senha">Senha (mín. 8)</Label>
               <Input id="acesso-senha" name="senha" type="text" minLength={8} required autoComplete="new-password" />
             </div>
-            <SubmitButton size="sm" className="self-start sm:col-span-3" pendingText="Criando…">
+            <SubmitButton size="sm" className="self-start" pendingText="Criando…">
               Criar acesso
             </SubmitButton>
           </form>

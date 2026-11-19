@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { MonthNav } from "@/components/layout/month-nav";
+import { semanasDoMes } from "@/components/clientes/calendar";
 import { SelectField } from "@/components/forms/select-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -32,7 +34,7 @@ export default async function ConteudoPage({
   const hoje = new Date();
   const mesParam = mes && /^\d{4}-\d{2}$/.test(mes) ? mes : paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1);
   const [ano, mesNumero] = mesParam.split("-").map(Number);
-  const dias = getMonthGrid(ano, mesNumero);
+  const dias = semanasDoMes(getMonthGrid(ano, mesNumero), mesNumero);
 
   const supabase = await createClient();
   let query = supabase
@@ -116,17 +118,11 @@ export default async function ConteudoPage({
             {MESES[mesNumero - 1]} {ano}{" "}
             <span className="text-sm font-normal text-muted-foreground">· {doMes.length} posts</span>
           </h2>
-          <div className="flex gap-2">
-            <Link href={linkMes(paramDoMes(anterior.year, anterior.month))} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              ← Anterior
-            </Link>
-            <Link href={linkMes(paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1))} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Hoje
-            </Link>
-            <Link href={linkMes(paramDoMes(proximo.year, proximo.month))} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Próximo →
-            </Link>
-          </div>
+          <MonthNav
+            anterior={linkMes(paramDoMes(anterior.year, anterior.month))}
+            hoje={linkMes(paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1))}
+            proximo={linkMes(paramDoMes(proximo.year, proximo.month))}
+          />
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border bg-card">

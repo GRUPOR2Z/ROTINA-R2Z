@@ -8,8 +8,6 @@ import { ClientTasksBoard } from "@/components/clientes/tasks-board";
 import { ClientCalendar } from "@/components/clientes/calendar";
 import { ClientProcessesTab } from "@/components/clientes/processes-tab";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/server";
 import {
   getClienteComPropriedades,
@@ -18,13 +16,10 @@ import {
 } from "@/lib/clients-data";
 import { getAreasEMembros } from "@/lib/lookups";
 import { getCurrentProfile } from "@/lib/current-profile";
-import { arquivarCliente, reabrirCliente, excluirCliente, enviarFotoCliente } from "../actions";
+import { arquivarCliente, reabrirCliente, excluirCliente } from "../actions";
 import { ClientAccessSection } from "@/components/clientes/access-section";
-import { ExternalLink } from "lucide-react";
-
-function iniciais(nome: string) {
-  return nome.trim().slice(0, 2).toUpperCase();
-}
+import { Archive, ArrowLeft, ExternalLink } from "lucide-react";
+import { AvatarUpload } from "@/components/clientes/avatar-upload";
 
 export default async function ClientePage({
   params,
@@ -61,100 +56,100 @@ export default async function ClientePage({
 
   return (
     <AppShell>
-      <div className="flex max-w-4xl flex-col gap-8">
-        <div>
-          <Link href="/clientes" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Clientes
-          </Link>
+      <div className="flex flex-col gap-6">
+        <Link href="/clientes" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft size={14} /> Clientes
+        </Link>
 
-          <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20">
-                {cliente.avatar_url && <AvatarImage src={cliente.avatar_url} alt={cliente.nome} />}
-                <AvatarFallback className="text-xl">{iniciais(cliente.nome)}</AvatarFallback>
-              </Avatar>
-              <div>
+        <header className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="h-20 bg-brand-900 bg-[radial-gradient(circle_at_85%_-20%,rgba(159,224,195,0.25),transparent_55%)]" />
+          <div className="flex flex-wrap items-end justify-between gap-4 px-6 pb-5">
+            <div className="flex min-w-0 items-end gap-4">
+              <div className="-mt-10 shrink-0">
+                <AvatarUpload clientId={cliente.id} nome={cliente.nome} url={cliente.avatar_url} />
+              </div>
+              <div className="min-w-0 pt-3">
                 <ClientNameEditor clientId={cliente.id} nomeInicial={cliente.nome} />
-                <form action={enviarFotoCliente.bind(null, cliente.id)} className="mt-2 flex items-center gap-2">
-                  <input
-                    name="foto"
-                    type="file"
-                    accept="image/*"
-                    required
-                    className="text-xs text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
-                  />
-                  <SubmitButton size="sm" variant="outline" pendingText="Enviando…">
-                    {cliente.avatar_url ? "Trocar foto" : "Adicionar foto"}
-                  </SubmitButton>
-                </form>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {cliente.tipo_cliente ? <span className="capitalize">{cliente.tipo_cliente}</span> : <span>Sem tipo definido</span>}
+                  {cliente.arquivado && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Arquivado</span>
+                  )}
+                </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-            <Link href={`/portal/${cliente.id}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-              <ExternalLink size={14} /> Ver como cliente
-            </Link>
-            {!cliente.arquivado ? (
-              <form action={arquivarCliente.bind(null, cliente.id)}>
-                <Button type="submit" size="sm" variant="outline">
-                  Arquivar
-                </Button>
-              </form>
-            ) : (
-              <form action={reabrirCliente.bind(null, cliente.id)}>
-                <Button type="submit" size="sm" variant="outline">
-                  Reabrir
-                </Button>
-              </form>
-            )}
+            <div className="flex flex-wrap gap-2 pb-1">
+              <Link href={`/portal/${cliente.id}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                <ExternalLink size={14} /> Ver como cliente
+              </Link>
+              {!cliente.arquivado ? (
+                <form action={arquivarCliente.bind(null, cliente.id)}>
+                  <Button type="submit" size="sm" variant="ghost" className="text-muted-foreground">
+                    <Archive size={14} /> Arquivar
+                  </Button>
+                </form>
+              ) : (
+                <form action={reabrirCliente.bind(null, cliente.id)}>
+                  <Button type="submit" size="sm" variant="outline">
+                    Reabrir
+                  </Button>
+                </form>
+              )}
             </div>
           </div>
-        </div>
+        </header>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-xs font-medium text-muted-foreground">Propriedades</h2>
-          <ClientPropertiesPanel
-            clientId={cliente.id}
-            tipoCliente={cliente.tipo_cliente}
-            definicoes={definicoes}
-            valorPorDefinicao={valorPorDefinicao}
-            membros={membros}
-            podeAdministrar={perfil?.isAdmin ?? false}
-          />
-        </section>
-
-        <ClientTabs
-          abaInicial={tab ?? "conteudo"}
-          conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} modo="equipe" />}
-          tarefas={
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-end">
-                <Link href={`/rotinas/nova?cliente=${cliente.id}`} className={buttonVariants({ size: "sm" })}>
-                  Nova tarefa
-                </Link>
-              </div>
-              <ClientTasksBoard vinculo={{ clientId: cliente.id }} tarefas={tarefas ?? []} />
-            </div>
-          }
-          processos={
-            <ClientProcessesTab
-              clientId={cliente.id}
-              vinculados={processosVinculados}
-              disponiveis={processosDisponiveis}
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <ClientTabs
+              abaInicial={tab ?? "conteudo"}
+              conteudo={<ClientCalendar clientId={cliente.id} mes={mes} membros={membros} modo="equipe" />}
+              tarefas={
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-end">
+                    <Link href={`/rotinas/nova?cliente=${cliente.id}`} className={buttonVariants({ size: "sm" })}>
+                      Nova tarefa
+                    </Link>
+                  </div>
+                  <ClientTasksBoard vinculo={{ clientId: cliente.id }} tarefas={tarefas ?? []} />
+                </div>
+              }
+              processos={
+                <ClientProcessesTab
+                  clientId={cliente.id}
+                  vinculados={processosVinculados}
+                  disponiveis={processosDisponiveis}
+                />
+              }
             />
-          }
-        />
+          </div>
 
-        <ClientAccessSection
-          clientId={cliente.id}
-          acessos={(acessos ?? []).map((a) => {
-            const p = a.profiles as unknown as { nome: string | null; email: string | null } | null;
-            return { profileId: a.profile_id, nome: p?.nome ?? null, email: p?.email ?? null };
-          })}
-          podeAdministrar={perfil?.isAdmin ?? false}
-          aviso={acesso === "criado" ? "Acesso criado. Envie o e-mail e a senha ao cliente." : acesso === "removido" ? "Acesso removido." : undefined}
-          erro={erro_acesso}
-        />
+          <aside className="flex min-w-0 flex-col gap-6">
+            <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+              <h2 className="text-sm font-semibold text-brand-900">Propriedades</h2>
+              <ClientPropertiesPanel
+                clientId={cliente.id}
+                tipoCliente={cliente.tipo_cliente}
+                definicoes={definicoes}
+                valorPorDefinicao={valorPorDefinicao}
+                membros={membros}
+                podeAdministrar={perfil?.isAdmin ?? false}
+              />
+            </section>
+
+            <ClientAccessSection
+              clientId={cliente.id}
+              acessos={(acessos ?? []).map((a) => {
+                const p = a.profiles as unknown as { nome: string | null; email: string | null } | null;
+                return { profileId: a.profile_id, nome: p?.nome ?? null, email: p?.email ?? null };
+              })}
+              podeAdministrar={perfil?.isAdmin ?? false}
+              aviso={acesso === "criado" ? "Acesso criado. Envie o e-mail e a senha ao cliente." : acesso === "removido" ? "Acesso removido." : undefined}
+              erro={erro_acesso}
+            />
+          </aside>
+        </div>
 
         <form action={excluirCliente.bind(null, cliente.id)} className="border-t pt-4">
           <Button type="submit" variant="ghost" size="sm" className="text-destructive">

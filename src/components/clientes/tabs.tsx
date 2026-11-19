@@ -2,12 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { CalendarDays, ListChecks, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ABAS = [
-  { valor: "conteudo", rotulo: "Conteúdo" },
-  { valor: "tarefas", rotulo: "Controle de tarefas" },
-  { valor: "processos", rotulo: "Processos" },
+  { valor: "conteudo", rotulo: "Calendário de conteúdo", icone: CalendarDays },
+  { valor: "tarefas", rotulo: "Tarefas", icone: ListChecks },
+  { valor: "processos", rotulo: "Processos", icone: Workflow },
 ] as const;
 
 type Aba = (typeof ABAS)[number]["valor"];
@@ -48,20 +49,23 @@ export function ClientTabs({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-1 border-b">
-        {ABAS.map((aba) => (
+      <div role="tablist" className="inline-flex w-fit flex-wrap gap-1 rounded-lg bg-muted p-1">
+        {ABAS.map(({ valor, rotulo, icone: Icone }) => (
           <button
-            key={aba.valor}
+            key={valor}
             type="button"
-            onClick={() => selecionar(aba.valor)}
+            role="tab"
+            aria-selected={abaAtiva === valor}
+            onClick={() => selecionar(valor)}
             className={cn(
-              "rounded-t-md px-3 py-2 text-sm font-medium transition-colors",
-              abaAtiva === aba.valor
-                ? "border-b-2 border-primary text-foreground"
+              "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition",
+              abaAtiva === valor
+                ? "bg-card text-brand-900 shadow-xs"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {aba.rotulo}
+            <Icone size={15} className={abaAtiva === valor ? "text-brand-600" : ""} />
+            {rotulo}
           </button>
         ))}
       </div>

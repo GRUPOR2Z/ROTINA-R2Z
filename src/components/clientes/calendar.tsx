@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Check, FileDown, MessageSquareWarning } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField } from "@/components/forms/select-field";
+import { MonthNav } from "@/components/layout/month-nav";
 import { createClient } from "@/lib/supabase/server";
 import {
   DIAS_SEMANA,
@@ -22,6 +22,16 @@ import { atualizarEventoCalendario, criarEventoCalendario, excluirEventoCalendar
 import { responderPost } from "@/app/portal/actions";
 
 type Membro = { id: string; nome: string | null; email: string | null };
+
+/** Corta da grade as semanas que só têm dias do mês vizinho. */
+export function semanasDoMes(dias: Date[], mes: number) {
+  const out: Date[] = [];
+  for (let i = 0; i < dias.length; i += 7) {
+    const semana = dias.slice(i, i + 7);
+    if (semana.some((d) => d.getMonth() + 1 === mes)) out.push(...semana);
+  }
+  return out;
+}
 
 type Post = {
   id: string;
@@ -62,7 +72,8 @@ export async function ClientCalendar({
   const mesParam = mes && /^\d{4}-\d{2}$/.test(mes) ? mes : paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1);
   const [ano, mesNumero] = mesParam.split("-").map(Number);
 
-  const dias = getMonthGrid(ano, mesNumero);
+  // só as semanas que têm dias do mês (a grade fixa tem 6 linhas)
+  const dias = semanasDoMes(getMonthGrid(ano, mesNumero), mesNumero);
   const inicio = dateKey(dias[0]);
   const fim = dateKey(dias[dias.length - 1]);
 
@@ -100,16 +111,12 @@ export async function ClientCalendar({
         <h3 className="text-lg font-semibold text-brand-900">
           {MESES[mesNumero - 1]} {ano}
         </h3>
-        <div className="flex flex-wrap gap-2">
-          <Link href={linkMes(paramDoMes(anterior.year, anterior.month))} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            ← Anterior
-          </Link>
-          <Link href={linkMes(mesAtualParam)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Hoje
-          </Link>
-          <Link href={linkMes(paramDoMes(proximo.year, proximo.month))} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Próximo →
-          </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <MonthNav
+            anterior={linkMes(paramDoMes(anterior.year, anterior.month))}
+            hoje={linkMes(mesAtualParam)}
+            proximo={linkMes(paramDoMes(proximo.year, proximo.month))}
+          />
           <a
             href={`/portal/${clientId}/imprimir?mes=${mesParam}`}
             target="_blank"
@@ -266,7 +273,7 @@ function LinhaPost({
         </p>
       )}
 
-      {evento.status === "em_aprovacao" && (
+      {evento.status === "em_aprovacao" && modo === "portal" && (
         <div className="ml-16 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
           <form action={responderPost.bind(null, evento.id, clientId, true)}>
             <SubmitButton size="sm" pendingText="Aprovando…">
