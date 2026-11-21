@@ -46,8 +46,22 @@ function estaAtrasada(prazo: string | null, status: string) {
 }
 
 /** Kanban de tarefas de um cliente ou de um projeto (`vinculo` decide
- * a qual dos dois a tarefa criada inline fica ligada). */
-export function ClientTasksBoard({ vinculo, tarefas: tarefasIniciais }: { vinculo: VinculoQuadro; tarefas: Tarefa[] }) {
+ * a qual dos dois a tarefa criada inline fica ligada). No portal do
+ * cliente, `podeCriar`/`podeMover` seguem as permissões dele e o card
+ * não abre a tela interna da tarefa. */
+export function ClientTasksBoard({
+  vinculo,
+  tarefas: tarefasIniciais,
+  podeCriar = true,
+  podeMover = true,
+  abrirAoClicar = true,
+}: {
+  vinculo: VinculoQuadro;
+  tarefas: Tarefa[];
+  podeCriar?: boolean;
+  podeMover?: boolean;
+  abrirAoClicar?: boolean;
+}) {
   const router = useRouter();
   const [tarefasAnteriores, setTarefasAnteriores] = useState(tarefasIniciais);
   const [tarefas, setTarefas] = useState(tarefasIniciais);
@@ -102,6 +116,7 @@ export function ClientTasksBoard({ vinculo, tarefas: tarefasIniciais }: { vincul
           <div
             key={coluna.valor}
             onDragOver={(e: DragEvent) => {
+              if (!podeMover) return;
               e.preventDefault();
               setColunaAlvo(coluna.valor);
             }}
@@ -134,16 +149,18 @@ export function ClientTasksBoard({ vinculo, tarefas: tarefasIniciais }: { vincul
                 return (
                   <div
                     key={tarefa.id}
-                    draggable
+                    draggable={podeMover}
                     onDragStart={(e: DragEvent) => {
                       e.dataTransfer.setData("text/plain", tarefa.id);
                       e.dataTransfer.effectAllowed = "move";
                       setArrastandoId(tarefa.id);
                     }}
                     onDragEnd={() => setArrastandoId(null)}
-                    onClick={() => router.push(`/rotinas/${tarefa.id}`)}
+                    onClick={abrirAoClicar ? () => router.push(`/rotinas/${tarefa.id}`) : undefined}
                     className={cn(
-                      "group flex cursor-grab items-start gap-2 rounded-lg border bg-card p-2.5 text-sm shadow-sm transition-all hover:shadow-md active:cursor-grabbing",
+                      "group flex items-start gap-2 rounded-lg border bg-card p-2.5 text-sm shadow-sm transition-all",
+                      podeMover && "cursor-grab active:cursor-grabbing",
+                      (podeMover || abrirAoClicar) && "hover:shadow-md",
                       arrastandoId === tarefa.id && "opacity-40",
                     )}
                   >
@@ -169,7 +186,10 @@ export function ClientTasksBoard({ vinculo, tarefas: tarefasIniciais }: { vincul
                 );
               })}
 
-              <NovaTarefaInline onCriar={(titulo) => adicionarTarefa(coluna.valor, titulo)} />
+              {podeCriar && <NovaTarefaInline onCriar={(titulo) => adicionarTarefa(coluna.valor, titulo)} />}
+              {!podeCriar && itens.length === 0 && (
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma tarefa.</p>
+              )}
             </div>
           </div>
         );

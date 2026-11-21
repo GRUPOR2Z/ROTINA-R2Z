@@ -7,13 +7,19 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/current-profile";
 
 export type TipoMaterial = "processo" | "roteiro";
+export type OrigemMaterial = "equipe" | "portal";
 
 const ABA: Record<TipoMaterial, string> = { processo: "processos", roteiro: "roteiros" };
 const LIMITE_PDF = 20 * 1024 * 1024; // 20 MB
 
-function voltar(clientId: string, tipo: TipoMaterial, params: Record<string, string> = {}): never {
+function voltar(
+  clientId: string,
+  tipo: TipoMaterial,
+  params: Record<string, string> = {},
+  origem: OrigemMaterial = "equipe",
+): never {
   const q = new URLSearchParams({ tab: ABA[tipo], ...params });
-  redirect(`/clientes/${clientId}?${q.toString()}`);
+  redirect(`${origem === "portal" ? "/portal" : "/clientes"}/${clientId}?${q.toString()}`);
 }
 
 /** "drive.google.com/..." vira "https://drive.google.com/..."; recusa o que nao for http(s). */
@@ -29,10 +35,12 @@ function normalizarLink(bruto: string) {
   }
 }
 
-/** Adiciona um processo (so link) ou roteiro (link e/ou PDF) ao cliente. */
-export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, formData: FormData) {
+/** Adiciona um processo (so link) ou roteiro (link e/ou PDF) ao cliente.
+ * Equipe sempre; cliente so com permissao "criar" na area (o RLS confere). */
+export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, origem: OrigemMaterial, formData: FormData) {
   const perfil = await getCurrentProfile();
-  if (!perfil || perfil.papel === "cliente") voltar(clientId, tipo, { erro_material: "Sem permissão." });
+  if (!perfil) redirect("/login");
+  const erroEm = (msg: string): never => voltar(clientId, tipo, { erro_material: msg }, origem);
 
   const titulo = String(formData.get("titulo") ?? "").trim();
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
@@ -41,12 +49,10 @@ export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, fo
   const arquivo = tipo === "roteiro" ? formData.get("arquivo") : null;
   const temArquivo = arquivo instanceof File && arquivo.size > 0;
 
-  if (!titulo) voltar(clientId, tipo, { erro_material: "Dê um título." });
-  if (linkBruto.trim() && !url) voltar(clientId, tipo, { erro_material: "Esse link não parece válido." });
+  if (!titulo) erroEm("Dê um título.");
+  if (linkBruto.trim() && !url) erroEm("Esse link não parece válido.");
   if (!url && !temArquivo) {
-    voltar(clientId, tipo, {
-      erro_material: tipo === "roteiro" ? "Cole um link ou escolha um PDF." : "Cole o link do processo.",
-    });
+    erroEm(tipo === "roteiro" ? "Cole um link ou escolha um PDF." : "Cole o link do processo.");
   }
 
   const supabase = await createClient();
@@ -56,16 +62,16 @@ export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, fo
   if (temArquivo) {
     const pdf = arquivo as File;
     if (pdf.type !== "application/pdf" && !pdf.name.toLowerCase().endsWith(".pdf")) {
-      voltar(clientId, tipo, { erro_material: "O arquivo precisa ser PDF." });
+      erroEm("O arquivo precisa ser PDF.");
     }
-    if (pdf.size > LIMITE_PDF) voltar(clientId, tipo, { erro_material: "O PDF passa de 20 MB." });
+    if (pdf.size > LIMITE_PDF) erroEm("O PDF passa de 20 MB.");
 
     arquivoNome = pdf.name;
     arquivoCaminho = `${clientId}/${randomUUID()}.pdf`;
     const { error } = await supabase.storage
       .from("client-files")
       .upload(arquivoCaminho, pdf, { contentType: "application/pdf" });
-    if (error) voltar(clientId, tipo, { erro_material: "Não foi possível enviar o PDF. Tente de novo." });
+    if (error) erroEm("Não foi possível enviar o PDF. Tente de novo.");
   }
 
   const { error } = await supabase.from("client_materials").insert({
@@ -76,16 +82,16 @@ export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, fo
     url,
     arquivo_caminho: arquivoCaminho,
     arquivo_nome: arquivoNome,
-    criado_por: perfil!.id,
+    criado_por: perfil.id,
   });
   if (error) {
     if (arquivoCaminho) await supabase.storage.from("client-files").remove([arquivoCaminho]);
-    voltar(clientId, tipo, { erro_material: "Não foi possível salvar. Tente de novo." });
+    erroEm("Não foi possível salvar. Tente de novo.");
   }
 
   revalidatePath(`/clientes/${clientId}`);
   revalidatePath(`/portal/${clientId}`);
-  voltar(clientId, tipo);
+  voltar(clientId, tipo, {}, origem);
 }
 
 export async function excluirMaterial(id: string, clientId: string, tipo: TipoMaterial) {

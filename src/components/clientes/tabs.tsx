@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, FileText, ListChecks, Workflow } from "lucide-react";
+import { CalendarDays, FileText, KeyRound, ListChecks, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ABAS = [
@@ -10,6 +10,7 @@ const ABAS = [
   { valor: "tarefas", rotulo: "Tarefas", icone: ListChecks },
   { valor: "processos", rotulo: "Processos", icone: Workflow },
   { valor: "roteiros", rotulo: "Roteiros", icone: FileText },
+  { valor: "acessos", rotulo: "Acessos", icone: KeyRound },
 ] as const;
 
 type Aba = (typeof ABAS)[number]["valor"];
@@ -29,12 +30,14 @@ export function ClientTabs({
   tarefas,
   processos,
   roteiros,
+  acessos,
 }: {
   abaInicial: string;
   conteudo: ReactNode;
   tarefas: ReactNode;
   processos: ReactNode;
   roteiros: ReactNode;
+  acessos: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,7 +51,7 @@ export function ClientTabs({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
-  const paineis: Record<Aba, ReactNode> = { conteudo, tarefas, processos, roteiros };
+  const paineis: Record<Aba, ReactNode> = { conteudo, tarefas, processos, roteiros, acessos };
 
   return (
     <div className="flex flex-col gap-4">

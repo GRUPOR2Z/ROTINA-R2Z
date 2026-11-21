@@ -178,6 +178,7 @@ export async function criarEventoCalendario(clientId: string, formData: FormData
   });
 
   revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/portal/${clientId}`);
 }
 
 function statusValido(valor: FormDataEntryValue | null) {
@@ -202,7 +203,8 @@ export async function atualizarEventoCalendario(eventId: string, clientId: strin
       horario: String(formData.get("horario") ?? "") || null,
       rede: String(formData.get("rede") ?? "") || null,
       formato: String(formData.get("formato") ?? "") || null,
-      responsavel_id: String(formData.get("responsavel_id") ?? "") || null,
+      // o portal nao mostra o campo responsavel: so muda se veio no form
+      ...(formData.has("responsavel_id") ? { responsavel_id: String(formData.get("responsavel_id") ?? "") || null } : {}),
       status: statusValido(formData.get("status")),
       roteiro: String(formData.get("roteiro") ?? "").trim() || null,
     })

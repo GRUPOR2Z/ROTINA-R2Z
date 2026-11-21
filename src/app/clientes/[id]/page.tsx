@@ -7,6 +7,8 @@ import { ClientNameEditor } from "@/components/clientes/client-name-editor";
 import { ClientTasksBoard } from "@/components/clientes/tasks-board";
 import { ClientCalendar } from "@/components/clientes/calendar";
 import { ClientMaterials } from "@/components/clientes/materials-tab";
+import { ClientCredentials } from "@/components/clientes/credentials-tab";
+import { normalizarPermissoes } from "@/lib/permissoes-cliente";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getClienteComPropriedades } from "@/lib/clients-data";
@@ -22,10 +24,10 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; mes?: string; acesso?: string; erro_acesso?: string; erro_material?: string }>;
+  searchParams: Promise<{ tab?: string; mes?: string; acesso?: string; erro_acesso?: string; erro_material?: string; erro_acesso_conta?: string }>;
 }) {
   const { id } = await params;
-  const { tab, mes, acesso, erro_acesso, erro_material } = await searchParams;
+  const { tab, mes, acesso, erro_acesso, erro_material, erro_acesso_conta } = await searchParams;
 
   const dados = await getClienteComPropriedades(id);
   if (!dados) notFound();
@@ -43,7 +45,7 @@ export default async function ClientePage({
       .order("prazo", { ascending: true, nullsFirst: false }),
     supabase
       .from("client_members")
-      .select("profile_id, criado_em, profiles!client_members_profile_id_fkey(nome, email)")
+      .select("profile_id, criado_em, permissoes, profiles!client_members_profile_id_fkey(nome, email)")
       .eq("client_id", id)
       .order("criado_em"),
   ]);
@@ -113,7 +115,8 @@ export default async function ClientePage({
                 <ClientMaterials
                   clientId={cliente.id}
                   tipo="processo"
-                  editavel
+                  podeCriar
+                  podeExcluir
                   erro={tab === "processos" ? erro_material : undefined}
                 />
               }
@@ -121,8 +124,19 @@ export default async function ClientePage({
                 <ClientMaterials
                   clientId={cliente.id}
                   tipo="roteiro"
-                  editavel
+                  podeCriar
+                  podeExcluir
                   erro={tab === "roteiros" ? erro_material : undefined}
+                />
+              }
+              acessos={
+                <ClientCredentials
+                  clientId={cliente.id}
+                  origem="equipe"
+                  podeCriar
+                  podeEditar
+                  podeExcluir
+                  erro={erro_acesso_conta}
                 />
               }
             />
@@ -145,10 +159,23 @@ export default async function ClientePage({
               clientId={cliente.id}
               acessos={(acessos ?? []).map((a) => {
                 const p = a.profiles as unknown as { nome: string | null; email: string | null } | null;
-                return { profileId: a.profile_id, nome: p?.nome ?? null, email: p?.email ?? null };
+                return {
+                  profileId: a.profile_id,
+                  nome: p?.nome ?? null,
+                  email: p?.email ?? null,
+                  permissoes: normalizarPermissoes(a.permissoes),
+                };
               })}
               podeAdministrar={perfil?.isAdmin ?? false}
-              aviso={acesso === "criado" ? "Acesso criado. Envie o e-mail e a senha ao cliente." : acesso === "removido" ? "Acesso removido." : undefined}
+              aviso={
+                acesso === "criado"
+                  ? "Acesso criado. Envie o e-mail e a senha ao cliente."
+                  : acesso === "removido"
+                    ? "Acesso removido."
+                    : acesso === "permissoes"
+                      ? "Permissões salvas."
+                      : undefined
+              }
               erro={erro_acesso}
             />
           </aside>

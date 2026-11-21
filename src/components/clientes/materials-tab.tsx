@@ -5,7 +5,12 @@ import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { PdfPicker } from "@/components/clientes/pdf-picker";
 import { createClient } from "@/lib/supabase/server";
-import { adicionarMaterial, excluirMaterial, type TipoMaterial } from "@/app/clientes/materiais-actions";
+import {
+  adicionarMaterial,
+  excluirMaterial,
+  type OrigemMaterial,
+  type TipoMaterial,
+} from "@/app/clientes/materiais-actions";
 
 const TEXTOS: Record<TipoMaterial, { vazio: string; novo: string; tituloEx: string }> = {
   processo: {
@@ -29,16 +34,21 @@ function dominio(url: string) {
 }
 
 /** Aba Processos (só links) ou Roteiros (link e/ou PDF) do cliente.
- * Mesma lista na página interna (com adicionar/excluir) e no portal. */
+ * Mesma lista na página interna e no portal; adicionar segue a
+ * permissão "criar" e excluir é só da equipe. */
 export async function ClientMaterials({
   clientId,
   tipo,
-  editavel = false,
+  podeCriar = false,
+  podeExcluir = false,
+  origem = "equipe",
   erro,
 }: {
   clientId: string;
   tipo: TipoMaterial;
-  editavel?: boolean;
+  podeCriar?: boolean;
+  podeExcluir?: boolean;
+  origem?: OrigemMaterial;
   erro?: string;
 }) {
   const supabase = await createClient();
@@ -54,10 +64,10 @@ export async function ClientMaterials({
 
   return (
     <div className="flex flex-col gap-4">
-      {editavel && (
+      {podeCriar && (
         <details className="rounded-xl border border-border bg-card p-4" open={Boolean(erro)}>
           <summary className="cursor-pointer text-sm font-medium text-brand-900">{textos.novo}</summary>
-          <form action={adicionarMaterial.bind(null, clientId, tipo)} className="mt-4 flex flex-col gap-3">
+          <form action={adicionarMaterial.bind(null, clientId, tipo, origem)} className="mt-4 flex flex-col gap-3">
             {erro && (
               <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 {erro}
@@ -150,7 +160,7 @@ export async function ClientMaterials({
                       <Download size={14} /> Baixar
                     </a>
                   )}
-                  {editavel && (
+                  {podeExcluir && (
                     <form action={excluirMaterial.bind(null, m.id, clientId, tipo)}>
                       <Button type="submit" size="sm" variant="ghost" className="text-destructive" title="Excluir">
                         <Trash2 size={14} />

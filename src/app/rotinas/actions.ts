@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/current-profile";
 import { textoOuNulo } from "@/lib/form";
 import {
   proximaData,
@@ -166,6 +167,11 @@ export async function criarTarefaRapida(vinculo: VinculoQuadro, status: string, 
   const titulo = tituloBruto.trim();
   if (!titulo) return null;
 
+  // tarefa criada pelo proprio cliente (portal) fica sem responsavel:
+  // a equipe define depois
+  const perfil = await getCurrentProfile();
+  const ehCliente = perfil?.papel === "cliente";
+
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -173,7 +179,7 @@ export async function criarTarefaRapida(vinculo: VinculoQuadro, status: string, 
       status,
       client_id: vinculo.clientId ?? null,
       project_id: vinculo.projectId ?? null,
-      responsavel_id: user.id,
+      responsavel_id: ehCliente ? null : user.id,
       prioridade: "media",
       // criada direto no quadro, so com titulo -- prazo e' definido depois
       justificativa_sem_prazo: "Criada pelo quadro; definir prazo",
@@ -184,7 +190,10 @@ export async function criarTarefaRapida(vinculo: VinculoQuadro, status: string, 
 
   if (error || !data) return null;
 
-  if (vinculo.clientId) revalidatePath(`/clientes/${vinculo.clientId}`);
+  if (vinculo.clientId) {
+    revalidatePath(`/clientes/${vinculo.clientId}`);
+    revalidatePath(`/portal/${vinculo.clientId}`);
+  }
   if (vinculo.projectId) revalidatePath(`/projetos/${vinculo.projectId}`);
   return data;
 }

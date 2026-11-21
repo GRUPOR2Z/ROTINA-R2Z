@@ -79,6 +79,9 @@ export async function ClientCalendar({
   membros = [],
   modo = "portal",
   aba = "conteudo",
+  podeCriar = modo === "equipe",
+  podeEditar = modo === "equipe",
+  podeExcluir = modo === "equipe",
 }: {
   clientId: string;
   mes: string | undefined;
@@ -86,8 +89,12 @@ export async function ClientCalendar({
   modo?: "equipe" | "portal";
   /** valor de ?tab= mantido nos links de mês */
   aba?: string;
+  /** no portal, seguem as permissões do login do cliente */
+  podeCriar?: boolean;
+  podeEditar?: boolean;
+  podeExcluir?: boolean;
 }) {
-  const editavel = modo === "equipe";
+  const equipe = modo === "equipe";
   const hoje = new Date();
   const mesParam = mes && /^\d{4}-\d{2}$/.test(mes) ? mes : paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1);
   const [ano, mesNumero] = mesParam.split("-").map(Number);
@@ -138,17 +145,24 @@ export async function ClientCalendar({
       statusChip: st.chip,
       roteiro: e.roteiro,
       comentarioCliente: e.comentario_cliente,
-      responsavel: editavel && e.responsavel_id ? (nomeMembro.get(e.responsavel_id) ?? null) : null,
+      responsavel: equipe && e.responsavel_id ? (nomeMembro.get(e.responsavel_id) ?? null) : null,
     };
   });
   const extras: Record<string, React.ReactNode> = Object.fromEntries(
     eventos.map((e) => [
       e.id,
-      editavel ? (
-        <EdicaoPost key={e.id} evento={e} clientId={clientId} membros={membros} />
-      ) : e.status === "em_aprovacao" ? (
-        <RespostaCliente key={e.id} evento={e} clientId={clientId} />
-      ) : null,
+      <div key={e.id} className="flex flex-col gap-4">
+        {!equipe && e.status === "em_aprovacao" && <RespostaCliente evento={e} clientId={clientId} />}
+        {(podeEditar || podeExcluir) && (
+          <EdicaoPost
+            evento={e}
+            clientId={clientId}
+            membros={equipe ? membros : []}
+            podeEditar={podeEditar}
+            podeExcluir={podeExcluir}
+          />
+        )}
+      </div>,
     ]),
   );
 
@@ -255,7 +269,7 @@ export async function ClientCalendar({
         </span>
       </div>
 
-      {editavel && (
+      {podeCriar && (
         <details className="rounded-xl border border-border bg-card p-4">
           <summary className="cursor-pointer text-sm font-medium text-brand-900">+ Novo post no calendário</summary>
           <form action={criarEventoCalendario.bind(null, clientId)} className="mt-4 flex flex-col gap-3">
@@ -336,10 +350,24 @@ function LinhaPost({ evento, modo }: { evento: Post; modo: "equipe" | "portal" }
   );
 }
 
-/** Dentro da janela do post (equipe): editar e excluir. */
-function EdicaoPost({ evento, clientId, membros }: { evento: Post; clientId: string; membros: Membro[] }) {
+/** Dentro da janela do post: editar (equipe, ou cliente com permissão)
+ * e excluir (só equipe). */
+function EdicaoPost({
+  evento,
+  clientId,
+  membros,
+  podeEditar,
+  podeExcluir,
+}: {
+  evento: Post;
+  clientId: string;
+  membros: Membro[];
+  podeEditar: boolean;
+  podeExcluir: boolean;
+}) {
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-4">
+      {podeEditar && (
       <details className="group" open={!evento.roteiro}>
         <summary className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900">
           <Pencil size={14} /> {evento.roteiro ? "Editar post e roteiro" : "Editar post e escrever o roteiro"}
@@ -351,11 +379,14 @@ function EdicaoPost({ evento, clientId, membros }: { evento: Post; clientId: str
           </SubmitButton>
         </form>
       </details>
-      <form action={excluirEventoCalendario.bind(null, evento.id, clientId)} className="self-end">
-        <Button type="submit" size="sm" variant="ghost" className="text-destructive">
-          <Trash2 size={14} /> Excluir post
-        </Button>
-      </form>
+      )}
+      {podeExcluir && (
+        <form action={excluirEventoCalendario.bind(null, evento.id, clientId)} className="self-end">
+          <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+            <Trash2 size={14} /> Excluir post
+          </Button>
+        </form>
+      )}
     </section>
   );
 }
@@ -432,14 +463,16 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
         options={STATUS_POST.map((s) => ({ value: s.valor, label: s.rotulo }))}
         defaultValue={post?.status ?? "planejado"}
       />
-      <NativeSelect
-        id={id("responsavel")}
-        name="responsavel_id"
-        label="Responsável (interno)"
-        options={membros.map((m) => ({ value: m.id, label: m.nome || m.email || "—" }))}
-        defaultValue={post?.responsavel_id}
-        emptyLabel="Ninguém"
-      />
+      {membros.length > 0 && (
+        <NativeSelect
+          id={id("responsavel")}
+          name="responsavel_id"
+          label="Responsável (interno)"
+          options={membros.map((m) => ({ value: m.id, label: m.nome || m.email || "—" }))}
+          defaultValue={post?.responsavel_id}
+          emptyLabel="Ninguém"
+        />
+      )}
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor={id("roteiro")}>Roteiro</Label>
         <Textarea

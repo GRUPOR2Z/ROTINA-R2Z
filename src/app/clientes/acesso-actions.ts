@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/current-profile";
+import { ACOES, MODULOS, normalizarPermissoes } from "@/lib/permissoes-cliente";
 
 function voltar(clientId: string, params: Record<string, string>): never {
   const q = new URLSearchParams(params).toString();
@@ -79,9 +80,40 @@ export async function removerAcessoCliente(clientId: string, profileId: string) 
   ]);
   const papelAlvo = (alvo?.roles as unknown as { nome: string } | null)?.nome;
   if ((count ?? 0) === 0 && papelAlvo === "cliente") {
-    await admin.auth.admin.deleteUser(profileId);
+    const { error } = await admin.auth.admin.deleteUser(profileId);
+    // o login nao pode ser apagado se o cliente for autor de algo (tarefa,
+    // post, material...): entao fica bloqueado de vez e o perfil inativo
+    if (error) {
+      await admin.auth.admin.updateUserById(profileId, { ban_duration: "876000h" });
+      await admin.from("profiles").update({ ativo: false }).eq("id", profileId);
+    }
   }
 
   revalidatePath(`/clientes/${clientId}`);
   voltar(clientId, { acesso: "removido" });
+}
+
+/** Salva o que um login de cliente pode ver/criar/editar em cada área
+ * do portal. "Criar" ou "editar" sem "ver" ganha "ver" junto. */
+export async function salvarPermissoes(clientId: string, profileId: string, formData: FormData) {
+  const perfil = await getCurrentProfile();
+  if (!perfil?.isAdmin) voltar(clientId, { erro_acesso: "Só administradores mudam permissões." });
+
+  const bruto: Record<string, string[]> = {};
+  for (const { valor: modulo } of MODULOS) {
+    bruto[modulo] = ACOES.map((a) => a.valor).filter((acao) => formData.get(`${modulo}:${acao}`) === "on");
+  }
+  const permissoes = normalizarPermissoes(bruto);
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("client_members")
+    .update({ permissoes })
+    .eq("client_id", clientId)
+    .eq("profile_id", profileId);
+  if (error) voltar(clientId, { erro_acesso: "Não foi possível salvar as permissões." });
+
+  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/portal/${clientId}`);
+  voltar(clientId, { acesso: "permissoes" });
 }
