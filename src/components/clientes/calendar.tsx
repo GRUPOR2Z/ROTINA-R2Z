@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SelectField } from "@/components/forms/select-field";
+import { NativeSelect } from "@/components/forms/native-select";
 import { MonthNav } from "@/components/layout/month-nav";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -402,21 +402,21 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
           placeholder="ex: 3 erros ao escolher um plano de saúde"
         />
       </div>
-      <SelectField
+      <NativeSelect
+        id={id("rede")}
         name="rede"
         label="Rede social"
         options={REDES.map((r) => ({ value: r.valor, label: r.rotulo }))}
         defaultValue={post?.rede}
         emptyLabel="—"
-        className="flex flex-col gap-1.5"
       />
-      <SelectField
+      <NativeSelect
+        id={id("formato")}
         name="formato"
         label="Formato (define a cor no calendário)"
         options={FORMATOS.map((f) => ({ value: f.valor, label: f.rotulo }))}
         defaultValue={post?.formato}
         emptyLabel="—"
-        className="flex flex-col gap-1.5"
       />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id("data")}>Data de postagem</Label>
@@ -426,20 +426,20 @@ function CamposPost({ prefixo, membros, post }: { prefixo: string; membros: Memb
         <Label htmlFor={id("horario")}>Horário (opcional)</Label>
         <Input id={id("horario")} name="horario" type="time" defaultValue={post?.horario?.slice(0, 5) ?? undefined} />
       </div>
-      <SelectField
+      <NativeSelect
+        id={id("status")}
         name="status"
         label="Status"
         options={STATUS_POST.map((s) => ({ value: s.valor, label: s.rotulo }))}
         defaultValue={post?.status ?? "planejado"}
-        className="flex flex-col gap-1.5"
       />
-      <SelectField
+      <NativeSelect
+        id={id("responsavel")}
         name="responsavel_id"
         label="Responsável (interno)"
         options={membros.map((m) => ({ value: m.id, label: m.nome || m.email || "—" }))}
         defaultValue={post?.responsavel_id}
         emptyLabel="Ninguém"
-        className="flex flex-col gap-1.5"
       />
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor={id("roteiro")}>Roteiro</Label>
