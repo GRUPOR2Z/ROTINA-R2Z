@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/forms/native-select";
 import { MonthNav } from "@/components/layout/month-nav";
+import { MonthPicker } from "@/components/layout/month-picker";
 import { createClient } from "@/lib/supabase/server";
 import {
   DIAS_SEMANA,
@@ -155,9 +156,7 @@ export async function ClientCalendar({
     <PostDialogs posts={detalhes} extras={extras}>
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold text-brand-900">
-          {MESES[mesNumero - 1]} {ano}
-        </h3>
+        <MonthPicker ano={ano} mes={mesNumero} />
         <div className="flex flex-wrap items-center gap-2">
           <MonthNav
             anterior={linkMes(paramDoMes(anterior.year, anterior.month))}

@@ -2,12 +2,13 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MonthNav } from "@/components/layout/month-nav";
+import { MonthPicker } from "@/components/layout/month-picker";
 import { semanasDoMes } from "@/components/clientes/calendar";
 import { SelectField } from "@/components/forms/select-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getClientesAtivos } from "@/lib/clients-data";
-import { DIAS_SEMANA, MESES, dateKey, getMonthGrid, mesAnterior, paramDoMes, proximoMes } from "@/lib/calendar";
+import { DIAS_SEMANA, dateKey, getMonthGrid, mesAnterior, paramDoMes, proximoMes } from "@/lib/calendar";
 import { STATUS_POST, alertaStatus, corDoFormato, infoStatus, rotuloRedeFormato } from "@/lib/conteudo";
 
 type Post = {
@@ -114,10 +115,10 @@ export default async function ConteudoPage({
         </form>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-brand-900">
-            {MESES[mesNumero - 1]} {ano}{" "}
-            <span className="text-sm font-normal text-muted-foreground">· {doMes.length} posts</span>
-          </h2>
+          <div className="flex items-center gap-2">
+            <MonthPicker ano={ano} mes={mesNumero} />
+            <span className="text-sm text-muted-foreground">· {doMes.length} posts</span>
+          </div>
           <MonthNav
             anterior={linkMes(paramDoMes(anterior.year, anterior.month))}
             hoje={linkMes(paramDoMes(hoje.getFullYear(), hoje.getMonth() + 1))}
