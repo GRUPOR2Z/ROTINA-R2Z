@@ -15,7 +15,7 @@ import {
 const TEXTOS: Record<TipoMaterial, { vazio: string; novo: string; tituloEx: string }> = {
   processo: {
     vazio: "Nenhum processo disponível ainda.",
-    novo: "+ Adicionar processo (link)",
+    novo: "+ Adicionar processo (link ou PDF)",
     tituloEx: "ex: Fluxo de aprovação de conteúdo",
   },
   roteiro: {
@@ -33,7 +33,7 @@ function dominio(url: string) {
   }
 }
 
-/** Aba Processos (só links) ou Roteiros (link e/ou PDF) do cliente.
+/** Aba Processos ou Roteiros do cliente (link e/ou PDF).
  * Mesma lista na página interna e no portal; adicionar segue a
  * permissão "criar" e excluir é só da equipe. */
 export async function ClientMaterials({
@@ -79,11 +79,10 @@ export async function ClientMaterials({
                 <Input id={`titulo-${tipo}`} name="titulo" required placeholder={textos.tituloEx} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`url-${tipo}`}>Link{tipo === "roteiro" ? " (opcional se enviar PDF)" : ""}</Label>
+                <Label htmlFor={`url-${tipo}`}>Link (opcional se enviar PDF)</Label>
                 <Input
                   id={`url-${tipo}`}
                   name="url"
-                  required={tipo === "processo"}
                   placeholder="https://…"
                   inputMode="url"
                 />
@@ -92,12 +91,10 @@ export async function ClientMaterials({
                 <Label htmlFor={`descricao-${tipo}`}>Descrição (opcional)</Label>
                 <Input id={`descricao-${tipo}`} name="descricao" placeholder="Uma linha explicando o que é" />
               </div>
-              {tipo === "roteiro" && (
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <Label>PDF (opcional se colar link)</Label>
-                  <PdfPicker />
-                </div>
-              )}
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label>PDF (opcional se colar link)</Label>
+                <PdfPicker />
+              </div>
             </div>
             <SubmitButton size="sm" className="self-start" pendingText="Salvando…">
               Adicionar

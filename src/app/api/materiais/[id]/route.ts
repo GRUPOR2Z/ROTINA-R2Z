@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const baixar = request.nextUrl.searchParams.has("baixar");
   const { data } = await supabase.storage
     .from("client-files")
-    .createSignedUrl(material.arquivo_caminho!, 60, baixar ? { download: material.arquivo_nome ?? "roteiro.pdf" } : undefined);
+    .createSignedUrl(material.arquivo_caminho!, 60, baixar ? { download: material.arquivo_nome ?? "documento.pdf" } : undefined);
 
   if (!data?.signedUrl) return NextResponse.json({ erro: "arquivo indisponível" }, { status: 404 });
   return NextResponse.redirect(data.signedUrl);

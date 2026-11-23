@@ -35,7 +35,7 @@ function normalizarLink(bruto: string) {
   }
 }
 
-/** Adiciona um processo (so link) ou roteiro (link e/ou PDF) ao cliente.
+/** Adiciona um processo ou roteiro (link e/ou PDF) ao cliente.
  * Equipe sempre; cliente so com permissao "criar" na area (o RLS confere). */
 export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, origem: OrigemMaterial, formData: FormData) {
   const perfil = await getCurrentProfile();
@@ -46,13 +46,13 @@ export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, or
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
   const linkBruto = String(formData.get("url") ?? "");
   const url = normalizarLink(linkBruto);
-  const arquivo = tipo === "roteiro" ? formData.get("arquivo") : null;
+  const arquivo = formData.get("arquivo");
   const temArquivo = arquivo instanceof File && arquivo.size > 0;
 
   if (!titulo) erroEm("Dê um título.");
   if (linkBruto.trim() && !url) erroEm("Esse link não parece válido.");
   if (!url && !temArquivo) {
-    erroEm(tipo === "roteiro" ? "Cole um link ou escolha um PDF." : "Cole o link do processo.");
+    erroEm("Cole um link ou escolha um PDF.");
   }
 
   const supabase = await createClient();
@@ -67,7 +67,8 @@ export async function adicionarMaterial(clientId: string, tipo: TipoMaterial, or
     if (pdf.size > LIMITE_PDF) erroEm("O PDF passa de 20 MB.");
 
     arquivoNome = pdf.name;
-    arquivoCaminho = `${clientId}/${randomUUID()}.pdf`;
+    // processos numa pasta propria: o banco confere a permissao da area pelo caminho (0035)
+    arquivoCaminho = tipo === "processo" ? `${clientId}/processos/${randomUUID()}.pdf` : `${clientId}/${randomUUID()}.pdf`;
     const { error } = await supabase.storage
       .from("client-files")
       .upload(arquivoCaminho, pdf, { contentType: "application/pdf" });
